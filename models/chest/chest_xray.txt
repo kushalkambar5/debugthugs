@@ -1,0 +1,5 @@
+on major datasets including CheXpert, NIH Chest X-ray8, MIMIC-CXR, and PadChest, 
+
+Output 
+
+{'Atelectasis': np.float32(0.32797328), 'Consolidation': np.float32(0.42933336), 'Infiltration': np.float32(0.5316924), 'Pneumothorax': np.float32(0.2884972), 'Edema': np.float32(0.024142731), 'Emphysema': np.float32(0.5011832), 'Fibrosis': np.float32(0.51887786), 'Effusion': np.float32(0.27805623), 'Pneumonia': np.float32(0.18569899), 'Pleural_Thickening': np.float32(0.24489869), 'Cardiomegaly': np.float32(0.36455137), 'Nodule': np.float32(0.68982), 'Mass': np.float32(0.6392845), 'Hernia': np.float32(0.00993877), 'Lung Lesion': np.float32(0.011150709), 'Fracture': np.float32(0.51916164), 'Lung Opacity':np.float32(0.59073937), 'Enlarged Cardiomediastinum': np.float32(0.27218726)}
