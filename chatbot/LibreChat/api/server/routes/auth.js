@@ -1,4 +1,8 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const { findUser, createUser, updateUser } = require('~/models');
+const { setAuthTokens } = require('~/server/services/AuthService');
 const { createSetBalanceConfig, forceRefreshCloudFrontAuthCookies } = require('@librechat/api');
 const {
   resetPasswordRequestController,
@@ -50,6 +54,57 @@ router.post(
   setBalanceConfig,
   loginController,
 );
+
+router.post('/auto-login', async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ message: 'Token is required' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ message: 'Invalid or expired auto-login token' });
+    }
+
+    const { email, name } = decoded;
+    if (!email) {
+      return res.status(400).json({ message: 'Email not found in token' });
+    }
+
+    let user = await findUser({ email });
+    if (!user) {
+      const salt = bcrypt.genSaltSync(10);
+      const newUserData = {
+        provider: 'local',
+        email,
+        username: email.split('@')[0],
+        name: name || email.split('@')[0],
+        avatar: null,
+        role: 'USER',
+        password: bcrypt.hashSync(Math.random().toString(36), salt),
+        emailVerified: true,
+      };
+
+      const appConfig = await getAppConfig();
+      user = await createUser(newUserData, appConfig?.balance, true, true);
+      await updateUser(user._id, { emailVerified: true });
+    }
+
+    const loginToken = await setAuthTokens(user._id, res, null, req);
+
+    const { password: _p, totpSecret: _t, __v, ...userData } = user.toObject ? user.toObject() : user;
+    userData.id = user._id.toString();
+
+    return res.status(200).send({ token: loginToken, user: userData });
+  } catch (err) {
+    console.error('Auto-login error:', err);
+    return res.status(500).json({ message: 'Internal server error during auto-login' });
+  }
+});
+
 router.post('/refresh', refreshController);
 router.post('/cloudfront/refresh', middleware.requireJwtAuth, (req, res) => {
   const result = getCloudFrontAuthCookieRefreshResult(req, res);

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]/route";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const resolvedParams = await params;
   return handleProxy(req, resolvedParams.path);
@@ -75,6 +77,7 @@ async function handleProxy(req: Request, pathSegments: string[]) {
     const fetchOptions: RequestInit = {
       method: req.method,
       headers: headers,
+      cache: "no-store",
     };
 
     if (req.method === "POST" || req.method === "PUT") {

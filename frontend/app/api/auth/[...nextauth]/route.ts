@@ -66,6 +66,23 @@ export const authOptions: AuthOptions = {
     },
     async session({ session, token }) {
       if (token && session.user) {
+        try {
+          const { db } = await import("@/lib/db");
+          const { users } = await import("@/lib/schema");
+          const { eq } = await import("drizzle-orm");
+
+          const dbUser = await db.query.users.findFirst({
+            where: eq(users.id, token.id as string),
+          });
+
+          if (!dbUser) {
+            console.log(`Session invalidation: user ${token.id} no longer exists in the database.`);
+            return null as any;
+          }
+        } catch (error) {
+          console.error("Error verifying user in session callback:", error);
+        }
+
         session.user.id = token.id;
         session.user.role = token.role;
         session.user.onboardingComplete = !!token.onboardingComplete;

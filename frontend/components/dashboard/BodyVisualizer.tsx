@@ -333,17 +333,8 @@ function PartTimelinePanel({
     });
   };
 
-  if (!selectedPartId && !showAll) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center gap-2 px-4 py-6">
-        <span className="text-3xl">👆</span>
-        <p className="font-serif font-bold text-[#4D493E] text-sm">Click on a any part to see its medical reports</p>
-        <p className="text-[10px] text-[#787363] font-sans leading-relaxed">
-          Tap any organ on the body model to see its medical timeline here.
-        </p>
-      </div>
-    );
-  }
+  // When no specific part is selected, show ALL reports with a hint instead of blocking
+  const isShowingAll = showAll || !selectedPartId;
 
   if (loading) {
     return (
@@ -359,17 +350,26 @@ function PartTimelinePanel({
 
   const selectedStageObj = DETAILED_STAGES.find((s) => s.id === selectedPartId);
   const selectedPartStage = selectedStageObj?.stage;
-  const matchedScans = showAll ? scans : scans.filter((s) => scanMatchesPart(s, selectedPartId!, selectedPartName));
-  const matchedReports = showAll ? reports : reports.filter((r) => reportMatchesPart(r, selectedPartId!, selectedPartName, selectedPartStage));
+  const matchedScans = isShowingAll ? scans : scans.filter((s) => scanMatchesPart(s, selectedPartId!, selectedPartName));
+  const matchedReports = isShowingAll ? reports : reports.filter((r) => reportMatchesPart(r, selectedPartId!, selectedPartName, selectedPartStage));
   const totalCount = matchedScans.length + matchedReports.length;
 
   return (
     <div className="space-y-3 overflow-y-auto pr-1 flex-1" style={{ maxHeight: "320px" }}>
+      {/* Hint banner when no specific organ is selected */}
+      {!selectedPartId && !showAll && (
+        <div className="flex items-center gap-2 bg-[#FAF6E8] border border-[#E6D89A] rounded-xl px-3 py-2 mb-1">
+          <span className="text-sm">👆</span>
+          <p className="text-[9px] text-[#8C6B1F] font-sans leading-relaxed">
+            Click any organ on the body to filter records for that part.
+          </p>
+        </div>
+      )}
       <div className="flex items-center gap-2 sticky top-0 bg-[#FAF9F5] pb-2 z-10">
-        <span className="text-lg">{showAll ? "📋" : selectedPartEmoji}</span>
+        <span className="text-lg">{isShowingAll ? "📋" : selectedPartEmoji}</span>
         <div>
           <p className="font-serif text-sm font-bold text-[#1C1B18] leading-tight">
-            {showAll ? allTitle : selectedPartName}
+            {isShowingAll ? (allTitle || "All Medical Records") : selectedPartName}
           </p>
           <p className="text-[9px] text-[#787363] font-sans">{totalCount} related record{totalCount !== 1 ? "s" : ""}</p>
         </div>
@@ -1028,7 +1028,7 @@ export default function BodyVisualizer() {
                 scans={medScans}
                 reports={medReports}
                 loading={medLoading}
-                showAll={false}
+                showAll={isFullBodyActive}
                 allTitle={allTitle}
               />
             </div>

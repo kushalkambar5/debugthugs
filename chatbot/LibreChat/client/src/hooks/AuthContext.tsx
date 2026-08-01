@@ -225,6 +225,41 @@ const AuthContextProvider = ({
     if (isExternalRedirectRef.current) {
       return;
     }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const autoLoginToken = urlParams.get('autoLoginToken');
+    if (autoLoginToken) {
+      urlParams.delete('autoLoginToken');
+      const newSearch = urlParams.toString();
+      const newPath = window.location.pathname + (newSearch ? '?' + newSearch : '') + window.location.hash;
+      window.history.replaceState(null, '', newPath);
+
+      const doAutoLogin = async () => {
+        try {
+          const res = await fetch('/api/auth/auto-login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ token: autoLoginToken })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const { user, token } = data;
+            setUserContext({ user, token, isAuthenticated: true, redirect: '/c/new' });
+          } else {
+            console.error('Auto-login failed:', await res.text());
+            silentRefresh();
+          }
+        } catch (err) {
+          console.error('Auto-login error:', err);
+          silentRefresh();
+        }
+      };
+      doAutoLogin();
+      return;
+    }
+
     if (userQuery.data) {
       setUser(userQuery.data);
     } else if (userQuery.isError) {

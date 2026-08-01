@@ -10,14 +10,27 @@ import Link from "next/link";
 
 type TabType = "body" | "disease" | "chat" | "metrics";
 
+// ─── Doctor EHR Workspace ────────────────────────────────────────────────────
+// Completely separate component so the main dashboard never fetches personal
+// data (profile, scans, metrics) when a DOCTOR is logged in.
+function DoctorDashboard() {
+  return (
+    <div className="min-h-screen flex flex-col bg-[#F6F4EF] text-[#1C1B18] font-sans antialiased">
+      <HeaderNav />
+      <main className="flex-1 w-full max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <PatientsDashboardWrapper />
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+// ─── Main Dashboard (Patients only) ─────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  
-  // View switcher state for DOCTOR role
-  const [doctorView, setDoctorView] = useState<"personal" | "patients">("personal");
 
-  // Patient states
+  // Patient-only state — never declared for doctor sessions
   const [profile, setProfile] = useState<any>(null);
   const [metrics, setMetrics] = useState<any[]>([]);
   const [scans, setScans] = useState<any[]>([]);
@@ -34,53 +47,41 @@ export default function DashboardPage() {
     }
   }, [status, session, router]);
 
-  // Fetch patient-specific data
+  // Only fetch personal data for PATIENT role
   useEffect(() => {
-    if (status === "authenticated" && session) {
+    if (status === "authenticated" && session && session.user.role === "PATIENT") {
       const fetchData = async () => {
         setLoadingData(true);
         try {
-          // Fetch User Profile
           const profileResp = await fetch("/api/user/profile");
-          if (profileResp.ok) {
-            const profileData = await profileResp.json();
-            setProfile(profileData);
-          }
+          if (profileResp.ok) setProfile(await profileResp.json());
 
-          // Fetch Medical History (scans & reports)
           const historyResp = await fetch("/api/medical-history");
           if (historyResp.ok) {
-            const historyData = await historyResp.json();
-            setScans(historyData.scans || []);
-            setReports(historyData.reports || []);
+            const d = await historyResp.json();
+            setScans(d.scans || []);
+            setReports(d.reports || []);
           }
 
-          // Fetch Health Metrics
           const metricsResp = await fetch("/api/health/metrics");
-          if (metricsResp.ok) {
-            const metricsData = await metricsResp.json();
-            setMetrics(metricsData || []);
-          }
+          if (metricsResp.ok) setMetrics((await metricsResp.json()) || []);
 
-          // Fetch Patient Doctors
-          if (session.user.role === "PATIENT") {
-            const doctorsResp = await fetch("/api/patient/doctors");
-            if (doctorsResp.ok) {
-              const doctorsData = await doctorsResp.json();
-              setDoctors(doctorsData || []);
-            }
-          }
+          const doctorsResp = await fetch("/api/patient/doctors");
+          if (doctorsResp.ok) setDoctors((await doctorsResp.json()) || []);
         } catch (error) {
           console.error("Error loading dashboard data:", error);
         } finally {
           setLoadingData(false);
         }
       };
-
       fetchData();
+    } else if (status === "authenticated" && session && session.user.role !== "PATIENT") {
+      // Non-patient roles need no personal data fetch — mark loading as done
+      setLoadingData(false);
     }
   }, [status, session]);
 
+  // ── Loading / unauthenticated guards ────────────────────────────────────────
   if (status === "loading") {
     return (
       <div className="min-h-screen flex flex-col bg-[#F6F4EF] justify-center items-center font-sans">
@@ -93,13 +94,17 @@ export default function DashboardPage() {
     );
   }
 
-  if (status === "unauthenticated" || !session) {
-    return null;
-  }
+  if (status === "unauthenticated" || !session) return null;
 
   const role = session.user.role || "PATIENT";
   const name = session.user.name || "User";
 
+  // ── Doctor: render the dedicated EHR workspace, zero personal data used ─────
+  if (role === "DOCTOR") {
+    return <DoctorDashboard />;
+  }
+
+  // ── Patient-only helpers & derived data ─────────────────────────────────────
   // Tab definitions with dedicated page routes
   const tabs = [
     { id: "body", label: "Visualize My Body", icon: "accessibility_new", href: "/visualize-body", bg: "hover:border-[#8C6B1F]/30" },
@@ -115,9 +120,7 @@ export default function DashboardPage() {
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
     return age;
   };
 

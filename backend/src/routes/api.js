@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { db } from '../db/index.js';
 import {
   users,
@@ -377,14 +378,8 @@ router.get('/doctor/patients', authenticateProxyUser, async (req, res) => {
         isActive: doctorPatients.isActive,
       })
       .from(users)
-      .innerJoin(doctorPatients, eq(users.id, doctorPatients.patientId))
-      .where(
-        and(
-          eq(users.role, 'PATIENT'),
-          eq(doctorPatients.doctorId, doctor.id),
-          eq(doctorPatients.isActive, true)
-        )
-      );
+      .leftJoin(doctorPatients, and(eq(users.id, doctorPatients.patientId), eq(doctorPatients.isActive, true)))
+      .where(eq(users.role, 'PATIENT'));
 
     const patientDetails = await Promise.all(
       allPatients.map(async (patient) => {
@@ -419,6 +414,114 @@ router.get('/doctor/patients', authenticateProxyUser, async (req, res) => {
   } catch (error) {
     console.error('Error fetching doctor patients:', error);
     return res.status(500).json({ message: error.message || 'An error occurred while fetching patients.' });
+  }
+});
+
+// ==========================================
+// 5.1 DOCTOR UPDATE PATIENT PROFILE
+// ==========================================
+router.post('/doctor/update-patient-profile', authenticateProxyUser, async (req, res) => {
+  try {
+    if (req.user.role !== 'DOCTOR') {
+      return res.status(403).json({ message: 'Access denied. Doctors only.' });
+    }
+    const {
+      patientId,
+      fullName,
+      dob,
+      gender,
+      bloodGroup,
+      heightCm,
+      weightKg,
+      allergiesJson,
+      chronicConditionsJson,
+      currentMedicationsJson,
+      emergencyContactPhone,
+    } = req.body;
+
+    if (!patientId) {
+      return res.status(400).json({ message: 'Patient ID is required.' });
+    }
+
+    await db
+      .update(users)
+      .set({
+        fullName: fullName || undefined,
+        dateOfBirth: dob || null,
+        gender: gender || null,
+        bloodGroup: bloodGroup || null,
+        heightCm: heightCm || null,
+        weightKg: weightKg || null,
+        allergiesJson: allergiesJson || null,
+        chronicConditionsJson: chronicConditionsJson || null,
+        currentMedicationsJson: currentMedicationsJson || null,
+        emergencyContactPhone: emergencyContactPhone || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, patientId));
+
+    return res.json({ message: 'Patient profile updated successfully.' });
+  } catch (error) {
+    console.error('Error updating patient profile:', error);
+    return res.status(500).json({ message: error.message || 'An error occurred while updating patient profile.' });
+  }
+});
+
+// ==========================================
+// 5.2 DOCTOR ADD PATIENT METRIC
+// ==========================================
+router.post('/doctor/add-patient-metric', authenticateProxyUser, async (req, res) => {
+  try {
+    if (req.user.role !== 'DOCTOR') {
+      return res.status(403).json({ message: 'Access denied. Doctors only.' });
+    }
+    const {
+      patientId,
+      steps,
+      heartRateAvg,
+      spo2Percentage,
+      sleepDurationMinutes,
+      metricDate,
+    } = req.body;
+
+    if (!patientId || !metricDate) {
+      return res.status(400).json({ message: 'Patient ID and Metric Date are required.' });
+    }
+
+    const existing = await db
+      .select({ id: healthMetrics.id })
+      .from(healthMetrics)
+      .where(and(eq(healthMetrics.patientId, patientId), eq(healthMetrics.metricDate, metricDate)))
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db
+        .update(healthMetrics)
+        .set({
+          steps: steps !== undefined ? parseInt(steps, 10) : undefined,
+          heartRateAvg: heartRateAvg !== undefined ? parseInt(heartRateAvg, 10) : undefined,
+          spo2Percentage: spo2Percentage !== undefined ? parseFloat(spo2Percentage).toFixed(2) : undefined,
+          sleepDurationMinutes: sleepDurationMinutes !== undefined ? parseInt(sleepDurationMinutes, 10) : undefined,
+          source: 'DOCTOR',
+          syncedAt: new Date(),
+        })
+        .where(and(eq(healthMetrics.patientId, patientId), eq(healthMetrics.metricDate, metricDate)));
+    } else {
+      await db.insert(healthMetrics).values({
+        patientId,
+        steps: steps !== undefined ? parseInt(steps, 10) : null,
+        heartRateAvg: heartRateAvg !== undefined ? parseInt(heartRateAvg, 10) : null,
+        spo2Percentage: spo2Percentage !== undefined ? parseFloat(spo2Percentage).toFixed(2) : null,
+        sleepDurationMinutes: sleepDurationMinutes !== undefined ? parseInt(sleepDurationMinutes, 10) : null,
+        metricDate,
+        source: 'DOCTOR',
+      });
+    }
+
+    return res.json({ message: 'Patient metric logged successfully.' });
+  } catch (error) {
+    console.error('Error logging patient metric:', error);
+    return res.status(500).json({ message: error.message || 'An error occurred while logging health metrics.' });
   }
 });
 
@@ -571,7 +674,10 @@ router.post('/patient/doctors/toggle-active', authenticateProxyUser, async (req,
 // ==========================================
 router.post('/scans', authenticateProxyUser, upload.single('file'), async (req, res) => {
   try {
-    const patientId = req.user.id;
+    let patientId = req.user.id;
+    if (req.user.role === 'DOCTOR') {
+      patientId = req.body.patientId || req.query.patientId || req.user.id;
+    }
     const { scanType, predictionResult: predictionResultStr, modelInputMetadata: modelInputMetadataStr } = req.body;
 
     if (!scanType || !predictionResultStr) {
@@ -748,7 +854,10 @@ router.post('/scans', authenticateProxyUser, upload.single('file'), async (req, 
 // ==========================================
 router.post('/medical-reports', authenticateProxyUser, upload.single('file'), async (req, res) => {
   try {
-    const patientId = req.user.id;
+    let patientId = req.user.id;
+    if (req.user.role === 'DOCTOR') {
+      patientId = req.body.patientId || req.query.patientId || req.user.id;
+    }
     const { title, description, reportType, reportDate, selectedPartId, selectedPartName, selectedPartStage, fromVisualizeBody } = req.body;
 
     if (!title) {
@@ -788,8 +897,8 @@ router.post('/medical-reports', authenticateProxyUser, upload.single('file'), as
     const apiKey = process.env.OPENCODE_ZEN_KEY;
     const model = process.env.OPENCODE_ZEN_MODEL || 'deepseek-v4-flash-free';
 
-    // If submitted from visualize-body page, generate ai_summary, medicines, and affected_parts via AI
-    if (fromVisualizeBody === 'true' && apiKey) {
+    // Generate ai_summary, medicines, and affected_parts via OpenCode Zen API
+    if (apiKey) {
       try {
         let primaryPartInfo = "";
         if (selectedPartStage && selectedPartName) {
@@ -913,10 +1022,6 @@ Return ONLY the raw JSON object. Do not include markdown code block formatting (
       }
     }
 
-    if (!aiSummary && description) {
-      aiSummary = description;
-    }
-
     if (affectedParts.length === 0 && selectedPartStage) {
       const stageInt = parseInt(selectedPartStage, 10);
       if (!isNaN(stageInt) && stageInt >= 1 && stageInt <= 13) {
@@ -929,7 +1034,7 @@ Return ONLY the raw JSON object. Do not include markdown code block formatting (
       .values({
         patientId,
         title,
-        description: description || null,
+        description: aiSummary || null,
         reportType: reportType || null,
         fileUrl,
         r2Key,
@@ -992,7 +1097,10 @@ router.get('/user/profile', authenticateProxyUser, async (req, res) => {
 // ==========================================
 router.get('/health/metrics', authenticateProxyUser, async (req, res) => {
   try {
-    const patientId = req.user.id;
+    let patientId = req.user.id;
+    if (req.user.role === 'DOCTOR' && req.query.patientId) {
+      patientId = req.query.patientId;
+    }
     const metrics = await db
       .select()
       .from(healthMetrics)
@@ -1012,7 +1120,10 @@ router.get('/health/metrics', authenticateProxyUser, async (req, res) => {
 // ==========================================
 router.get('/medical-history', authenticateProxyUser, async (req, res) => {
   try {
-    const patientId = req.user.id;
+    let patientId = req.user.id;
+    if (req.user.role === 'DOCTOR' && req.query.patientId) {
+      patientId = req.query.patientId;
+    }
 
     const scans = await db
       .select()
@@ -1067,6 +1178,37 @@ router.post('/user/profile-image', authenticateProxyUser, upload.single('file'),
   } catch (error) {
     console.error('[Profile Image Upload Error]', error);
     return res.status(500).json({ message: error.message || 'Failed to upload profile image.' });
+  }
+});
+
+// GET /api/librechat-token
+router.get('/librechat-token', authenticateProxyUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const [user] = await db
+      .select({
+        email: users.email,
+        fullName: users.fullName,
+      })
+      .from(users)
+      .where(eq(users.id, userId));
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const librechatJwtSecret = process.env.LIBRECHAT_JWT_SECRET || 'medgemma_jwt_secret_key_1234567890_antigravity';
+
+    const token = jwt.sign(
+      { email: user.email, name: user.fullName },
+      librechatJwtSecret,
+      { expiresIn: '5m' }
+    );
+
+    return res.json({ token });
+  } catch (error) {
+    console.error('Error generating LibreChat token:', error);
+    return res.status(500).json({ error: 'Failed to generate token.' });
   }
 });
 
