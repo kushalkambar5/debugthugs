@@ -2,11 +2,15 @@
 
 import React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import ScrollFloat from "@/components/ui/ScrollFloat";
 import SpecularButton from "@/components/SpecularButton";
+import { useSession } from "next-auth/react";
 
 export function HeroSection() {
+  const { data: session, status } = useSession();
+
   return (
     <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-6 relative z-10">
       {/* Main Soft Yellow Container Card */}
@@ -34,30 +38,66 @@ export function HeroSection() {
           </p>
 
           {/* Primary Action & Avatar Proof Stack */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 pt-2">
-            <SpecularButton
-              href="#interactive-showcase"
-              size="custom"
-              radius={9999}
-              tint="#1C1B18"
-              tintOpacity={1}
-              textColor="#ffffff"
-              lineColor="#ffffff"
-              baseColor="#525252"
-              intensity={1.2}
-              shineSize={12}
-              shineFade={35}
-              thickness={1.5}
-              speed={0.4}
-              followMouse={true}
-              proximity={300}
-              className="px-7 py-4 text-xs font-bold tracking-wider uppercase shadow-md group font-sans"
-            >
-              <span>Get Started</span>
-              <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-1 transition-transform">
-                <MaterialIcon name="arrow_forward" className="text-sm text-white" />
-              </span>
-            </SpecularButton>
+          <div className="flex flex-wrap items-center gap-4 pt-2">
+            {status === "authenticated" ? (
+              <SpecularButton
+                href="/dashboard"
+                size="custom"
+                radius={9999}
+                tint="#1C1B18"
+                tintOpacity={1}
+                textColor="#ffffff"
+                lineColor="#ffffff"
+                baseColor="#525252"
+                intensity={1.2}
+                shineSize={12}
+                shineFade={35}
+                thickness={1.5}
+                speed={0.4}
+                followMouse={true}
+                proximity={300}
+                className="px-7 py-4 text-xs font-bold tracking-wider uppercase shadow-md group font-sans"
+              >
+                <span>Go to Dashboard</span>
+                <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-1 transition-transform">
+                  <MaterialIcon name="arrow_forward" className="text-sm text-white" />
+                </span>
+              </SpecularButton>
+            ) : (
+              <>
+                <SpecularButton
+                  href="/signup"
+                  size="custom"
+                  radius={9999}
+                  tint="#1C1B18"
+                  tintOpacity={1}
+                  textColor="#ffffff"
+                  lineColor="#ffffff"
+                  baseColor="#525252"
+                  intensity={1.2}
+                  shineSize={12}
+                  shineFade={35}
+                  thickness={1.5}
+                  speed={0.4}
+                  followMouse={true}
+                  proximity={300}
+                  className="px-7 py-4 text-xs font-bold tracking-wider uppercase shadow-md group font-sans"
+                >
+                  <span>Get Started</span>
+                  <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-1 transition-transform">
+                    <MaterialIcon name="arrow_forward" className="text-sm text-white" />
+                  </span>
+                </SpecularButton>
+
+                <Link
+                  href="/login"
+                  className="px-7 py-4 text-xs font-bold tracking-wider uppercase rounded-full border border-[#1C1B18]/20 bg-white/70 hover:bg-white text-[#1C1B18] transition-all shadow-xs hover:shadow-md flex items-center gap-2 font-sans group active:scale-95"
+                >
+                  <span>Sign In</span>
+                  <MaterialIcon name="login" className="text-sm text-[#1C1B18] group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
@@ -65,3 +105,4 @@ export function HeroSection() {
     </section>
   );
 }
+

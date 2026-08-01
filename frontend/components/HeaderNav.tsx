@@ -40,6 +40,15 @@ export function HeaderNav() {
 
         {/* Desktop Navigation Links */}
         <nav className="hidden md:flex items-center gap-8">
+          {status === "authenticated" && (
+            <Link
+              href="/dashboard"
+              className="text-sm font-sans font-semibold text-[#8C6B1F] hover:text-[#1C1B18] transition-colors flex items-center gap-1"
+            >
+              <MaterialIcon name="dashboard" className="text-base" />
+              Dashboard
+            </Link>
+          )}
           <Link
             href="#core-services"
             className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors"
@@ -123,6 +132,15 @@ export function HeaderNav() {
                       <span>Complete Onboarding</span>
                     </Link>
                   )}
+
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#8C6B1F] hover:bg-[#FAF6E8] rounded-lg transition-colors border-b border-[#E8E2D4]/50 mb-1"
+                  >
+                    <MaterialIcon name="dashboard" className="text-sm" />
+                    <span>My Dashboard</span>
+                  </Link>
 
                   <button
                     onClick={() => {
@@ -272,6 +290,15 @@ export function HeaderNav() {
                     <span>Complete Onboarding</span>
                   </Link>
                 )}
+
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 text-sm font-semibold text-[#8C6B1F] flex items-center gap-2 border-b border-[#E8E2D4]/50"
+                >
+                  <MaterialIcon name="dashboard" className="text-lg" />
+                  <span>My Dashboard</span>
+                </Link>
 
                 <button
                   onClick={() => {
