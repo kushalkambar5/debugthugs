@@ -2,8 +2,8 @@ fastapi
 uvicorn
 python-multipart
 pydantic
-ultralytics==8.0.222
-torch>=2.8.0
+ultralytics
+torch>=2.0.0
 torchvision
 xgboost==2.0.2
 pandas==2.1.3
