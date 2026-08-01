@@ -6,9 +6,6 @@ import { useSession } from "next-auth/react";
 import { HeaderNav } from "@/components/HeaderNav";
 import { Footer } from "@/components/Footer";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
-import BodyVisualizer from "@/components/dashboard/BodyVisualizer";
-import DiseaseDetector from "@/components/dashboard/DiseaseDetector";
-import HippoChat from "@/components/dashboard/HippoChat";
 import Link from "next/link";
 
 type TabType = "body" | "disease" | "chat" | "metrics";
@@ -16,8 +13,6 @@ type TabType = "body" | "disease" | "chat" | "metrics";
 export default function DashboardPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const [activeTab, setActiveTab] = useState<TabType>("body");
-  
   // Doctor-specific view state: "personal" (My Dashboard) or "patients" (Patients Dashboard)
   const [doctorView, setDoctorView] = useState<"personal" | "patients">("personal");
 
@@ -49,12 +44,12 @@ export default function DashboardPage() {
   const role = session.user.role || "PATIENT";
   const name = session.user.name || "User";
 
-  // Tab definitions
+  // Tab definitions with dedicated page routes
   const tabs = [
-    { id: "body" as TabType, label: "Visualize My Body", icon: "accessibility_new" },
-    { id: "disease" as TabType, label: "Detect Disease", icon: "biotech" },
-    { id: "chat" as TabType, label: "Chat with Hippo", icon: "forum" },
-    { id: "metrics" as TabType, label: "See my health Metrics", icon: "monitoring" },
+    { id: "body" as TabType, label: "Visualize My Body", icon: "accessibility_new", href: "/visualize-body" },
+    { id: "disease" as TabType, label: "Detect Disease", icon: "biotech", href: "/detect-disease" },
+    { id: "chat" as TabType, label: "Chat with Hippo", icon: "forum", href: "/chat-with-hippo" },
+    { id: "metrics" as TabType, label: "See my Health Metrics", icon: "monitoring", href: "/health-metrics" },
   ];
 
   return (
@@ -123,47 +118,20 @@ export default function DashboardPage() {
         ) : (
           // Standard User View (or Doctor Personal View "My Dashboard")
           <section className="space-y-6">
-            {/* Tab navigation list */}
-            <div className="flex overflow-x-auto pb-2 gap-2 scrollbar-none">
+            {/* Quick-access navigation cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {tabs.map((tab) => (
-                <button
+                <Link
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-5 py-3 rounded-2xl border text-xs font-bold font-sans tracking-wide uppercase transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
-                    activeTab === tab.id
-                      ? "bg-[#1C1B18] text-white border-transparent shadow-xs"
-                      : "bg-[#FAF9F5] border-[#E6E1D3] text-[#4D493E] hover:bg-[#FAF6E8]"
-                  }`}
+                  href={tab.href}
+                  className="group px-5 py-5 rounded-2xl border border-[#E6E1D3] bg-[#FAF9F5] hover:bg-[#FAF6E8] hover:border-[#C49A24]/40 text-[#4D493E] hover:text-[#1C1B18] transition-all flex flex-col items-center gap-2.5 shadow-xs cursor-pointer"
                 >
-                  <MaterialIcon name={tab.icon} className="text-sm" />
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Render Tab Contents */}
-            <div className="w-full transition-all duration-300">
-              {activeTab === "body" && <BodyVisualizer />}
-              {activeTab === "disease" && <DiseaseDetector />}
-              {activeTab === "chat" && <HippoChat />}
-              {activeTab === "metrics" && (
-                <div className="bg-white border border-[#E6E1D3] rounded-[32px] p-10 text-center shadow-xs flex flex-col justify-center items-center min-h-[400px]">
-                  <div className="w-16 h-16 rounded-full bg-[#FAF6E8] text-[#8C6B1F] flex items-center justify-center mb-6">
-                    <MaterialIcon name="monitoring" className="text-3xl" />
+                  <div className="w-12 h-12 rounded-xl bg-[#FAF6E8] border border-[#E6E1D3] group-hover:bg-[#F0E8C8] flex items-center justify-center transition-colors">
+                    <MaterialIcon name={tab.icon} className="text-xl text-[#8C6B1F]" />
                   </div>
-                  <h3 className="font-serif text-2xl font-bold text-[#1C1B18] mb-2">See my health Metrics</h3>
-                  <p className="text-xs text-[#787363] font-sans mb-6 max-w-sm leading-relaxed">
-                    This section is a dedicated empty placeholder for testing metrics, activity charts, heart sync rate tables, and other bio-tracking dashboards.
-                  </p>
-                  <Link
-                    href="/dashboard/health-metrics"
-                    className="px-6 py-3 bg-[#1C1B18] hover:bg-[#2E2C26] text-white font-semibold rounded-xl text-xs uppercase tracking-wider transition-all shadow-xs flex items-center gap-2"
-                  >
-                    <span>Open Metrics Page</span>
-                    <MaterialIcon name="open_in_new" className="text-sm" />
-                  </Link>
-                </div>
-              )}
+                  <span className="text-[11px] font-bold font-sans tracking-wide text-center leading-tight">{tab.label}</span>
+                </Link>
+              ))}
             </div>
           </section>
         )}

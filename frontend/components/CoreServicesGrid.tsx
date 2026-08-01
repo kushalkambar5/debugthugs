@@ -61,7 +61,7 @@ const coreServices = [
 
 export function CoreServicesGrid() {
   return (
-    <section id="core-services" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <section id="core-services" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-6">
       
       {/* Section Header (Matches "Our core dental services" in reference image) */}
       <div className="text-center max-w-3xl mx-auto space-y-4 mb-14">

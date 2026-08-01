@@ -12,7 +12,11 @@ interface Message {
   isStreaming?: boolean;
 }
 
-export default function HippoChat() {
+interface HippoChatProps {
+  fullHeight?: boolean;
+}
+
+export default function HippoChat({ fullHeight = false }: HippoChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -170,7 +174,9 @@ export default function HippoChat() {
   };
 
   return (
-    <div className="w-full bg-[#FAF9F5] border border-[#E6E1D3] rounded-[32px] overflow-hidden shadow-xs flex flex-col h-[650px]">
+    <div className={`w-full bg-[#FAF9F5] border border-[#E6E1D3] rounded-[32px] overflow-hidden shadow-xs flex flex-col ${
+      fullHeight ? "flex-1 min-h-0" : "h-[650px]"
+    }`}>
       
       {/* Header Info */}
       <header className="px-6 py-4 bg-white border-b border-[#E6E1D3] flex items-center justify-between shrink-0">

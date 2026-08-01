@@ -26,7 +26,7 @@ export default function Home() {
         <CoreServicesGrid />
 
         {/* Full-width Strands Component seamlessly integrated */}
-        <div className="w-full h-[260px] sm:h-[320px] lg:h-[380px] relative overflow-hidden pointer-events-none my-2">
+        <div className="w-full h-[260px] sm:h-[320px] lg:h-[380px] relative overflow-hidden pointer-events-none">
           <Strands
             colors={["#F97316", "#7C3AED", "#06B6D4"]}
             count={4}

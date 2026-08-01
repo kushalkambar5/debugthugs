@@ -41,50 +41,34 @@ export function HeaderNav() {
         {/* Desktop Navigation Links */}
         <nav className="hidden md:flex items-center gap-8">
           {status === "authenticated" && (
-            <Link
-              href="/dashboard"
-              className="text-sm font-sans font-semibold text-[#8C6B1F] hover:text-[#1C1B18] transition-colors flex items-center gap-1"
-            >
-              <MaterialIcon name="dashboard" className="text-base" />
-              Dashboard
-            </Link>
+            <>
+<>
+  <Link href="/visualize-body" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">
+    Visualize Body
+  </Link>
+  <Link href="/detect-disease" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">
+    Detect Disease
+  </Link>
+  <Link href="/chat-with-hippo" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">
+    Chat with Hippo
+  </Link>
+  <Link href="/health-metrics" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">
+    Health Metrics
+  </Link>
+</>
+            </>
           )}
-          <Link
-            href="#core-services"
-            className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors"
-          >
-            Core Services
-          </Link>
-          <Link
-            href="#interactive-showcase"
-            className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors flex items-center gap-1"
-          >
-            Live AI Demos
-          </Link>
-          <Link
-            href="#diagnostic-suite"
-            className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors"
-          >
-            Diagnostic AI
-          </Link>
-          <Link
-            href="#doctor-portal"
-            className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors"
-          >
-            Doctor Verification
-          </Link>
-          <Link
-            href="#medical-team"
-            className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors"
-          >
-            Our Experts
-          </Link>
-          <Link
-            href="#reviews"
-            className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors"
-          >
-            Reviews
-          </Link>
+          {/* Keep original links for unauthenticated users */}
+          {status !== "authenticated" && (
+            <>
+              <Link href="#core-services" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">Core Services</Link>
+              <Link href="#interactive-showcase" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors flex items-center gap-1">Live AI Demos</Link>
+              <Link href="#diagnostic-suite" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">Diagnostic AI</Link>
+              <Link href="#doctor-portal" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">Doctor Verification</Link>
+              <Link href="#medical-team" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">Our Experts</Link>
+              <Link href="#reviews" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">Reviews</Link>
+            </>
+          )}
         </nav>
 
         {/* Right CTA Actions */}
@@ -210,49 +194,46 @@ export function HeaderNav() {
       {mobileMenuOpen && (
         <div className="md:hidden bg-[#F6F4EF] border-b border-[#E6E1D3] px-6 py-6 space-y-4">
           <nav className="flex flex-col gap-4 text-base font-medium text-[#1C1B18]">
-            <Link
-              href="#core-services"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-1 border-b border-[#E8E2D4]"
-            >
-              Core Services
-            </Link>
-            <Link
-              href="#interactive-showcase"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-1 border-b border-[#E8E2D4] flex items-center gap-2"
-            >
-              <MaterialIcon name="auto_awesome" className="text-lg text-[#C49A24]" />
-              Live AI Demos
-            </Link>
-            <Link
-              href="#diagnostic-suite"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-1 border-b border-[#E8E2D4]"
-            >
-              Diagnostic AI
-            </Link>
-            <Link
-              href="#doctor-portal"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-1 border-b border-[#E8E2D4]"
-            >
-              Doctor Verification
-            </Link>
-            <Link
-              href="#medical-team"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-1 border-b border-[#E8E2D4]"
-            >
-              Our Experts
-            </Link>
-            <Link
-              href="#reviews"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-1"
-            >
-              Reviews
-            </Link>
+            {/* Mobile Drawer Navigation Links */}
+            {status === "authenticated" && (
+              <>
+                <Link href="/visualize-body" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4]">
+                  Visualize Body
+                </Link>
+                <Link href="/detect-disease" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4]">
+                  Detect Disease
+                </Link>
+                <Link href="/chat-with-hippo" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4] flex items-center gap-2">
+                  Chat with Hippo
+                </Link>
+                <Link href="/health-metrics" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4]">
+                  Health Metrics
+                </Link>
+              </>
+            )}
+            {status !== "authenticated" && (
+              <>
+                <Link href="#core-services" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4]">
+                  Core Services
+                </Link>
+                <Link href="#interactive-showcase" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4] flex items-center gap-2">
+                  <MaterialIcon name="auto_awesome" className="text-lg text-[#C49A24]" />
+                  Live AI Demos
+                </Link>
+                <Link href="#diagnostic-suite" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4]">
+                  Diagnostic AI
+                </Link>
+                <Link href="#doctor-portal" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4]">
+                  Doctor Verification
+                </Link>
+                <Link href="#medical-team" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4]">
+                  Our Experts
+                </Link>
+                <Link href="#reviews" onClick={() => setMobileMenuOpen(false)} className="py-1">
+                  Reviews
+                </Link>
+              </>
+            )}
           </nav>
           <div className="pt-4 border-t border-[#E8E2D4] flex flex-col gap-3 font-sans">
             {status === "authenticated" && session?.user ? (
