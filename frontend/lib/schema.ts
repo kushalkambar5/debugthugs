@@ -88,6 +88,7 @@ export const medicalReports = pgTable('medical_reports', {
   fileType: varchar('file_type', { length: 50 }),
   extractedData: jsonb('extracted_data'),
   aiSummary: jsonb('ai_summary'),
+  affectedParts: integer('affected_parts').array(),
   reportDate: date('report_date'),
   uploadedAt: timestamp('uploaded_at').defaultNow().notNull(),
 });
@@ -121,6 +122,7 @@ export const diseaseScans = pgTable('disease_scans', {
   predictionResult: jsonb('prediction_result'),
   status: scanStatusEnum('status').default('PENDING'),
   aiExplanation: text('ai_explanation'),
+  affectedParts: integer('affected_parts').array(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   completedAt: timestamp('completed_at'),
 });
