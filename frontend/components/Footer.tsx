@@ -35,7 +35,7 @@ export function Footer() {
             </Link>
 
             <p className="text-xs text-[#AAA595] leading-relaxed max-w-sm">
-              Hippo Health combines RAG medical chatbots, smartwatch telemetry, 3D anatomical modeling, and 5 specialized computer vision engines with mandatory physician oversight.
+              Hippo Health combines RAG medical chatbots, smartwatch telemetry, 2D anatomical modeling, and 6 specialized clinical AI diagnostic engines with mandatory physician oversight.
             </p>
 
             <div className="flex items-center gap-2 text-xs text-[#F4E071]">
@@ -47,32 +47,32 @@ export function Footer() {
           {/* Nav Links Column 1 */}
           <div className="md:col-span-3 space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[#F4E071]">
-              Core AI Features
+              Clinical Platform
             </h4>
             <ul className="space-y-2.5 text-xs text-[#AAA595]">
               <li>
-                <Link href="#core-services" className="hover:text-white transition-colors">
-                  AI Medical Chatbot & RAG Memory
+                <Link href="/dashboard" className="hover:text-white transition-colors">
+                  My Clinical Dashboard
                 </Link>
               </li>
               <li>
-                <Link href="#interactive-showcase" className="hover:text-white transition-colors">
-                  Doctor-Verified Recommendation Studio
+                <Link href="/chat-with-hippo" className="hover:text-white transition-colors">
+                  AI Medical Chatbot (Hippo Chat)
                 </Link>
               </li>
               <li>
-                <Link href="#interactive-showcase" className="hover:text-white transition-colors">
-                  Google Health API Smartwatch Sync
+                <Link href="/visualize-body" className="hover:text-white transition-colors">
+                  2D Human Anatomy Viewer
                 </Link>
               </li>
               <li>
-                <Link href="#interactive-showcase" className="hover:text-white transition-colors">
-                  3D Human Anatomy Viewer
+                <Link href="/health-metrics" className="hover:text-white transition-colors">
+                  Smartwatch Telemetry Sync
                 </Link>
               </li>
               <li>
-                <Link href="#doctor-portal" className="hover:text-white transition-colors">
-                  Clinician Patient Management Suite
+                <Link href="/medical-history" className="hover:text-white transition-colors">
+                  Medical History Repository
                 </Link>
               </li>
             </ul>
@@ -85,28 +85,33 @@ export function Footer() {
             </h4>
             <ul className="space-y-2.5 text-xs text-[#AAA595]">
               <li>
-                <Link href="#diagnostic-suite" className="hover:text-white transition-colors">
-                  Chest X-Ray (YOLOv11)
+                <Link href="/detect-disease?model=chest" className="hover:text-white transition-colors">
+                  Chest Pathology AI
                 </Link>
               </li>
               <li>
-                <Link href="#diagnostic-suite" className="hover:text-white transition-colors">
+                <Link href="/detect-disease?model=bone" className="hover:text-white transition-colors">
                   Bone Fracture AI
                 </Link>
               </li>
               <li>
-                <Link href="#diagnostic-suite" className="hover:text-white transition-colors">
-                  Cardiovascular XGBoost
+                <Link href="/detect-disease?model=ecg" className="hover:text-white transition-colors">
+                  ECG Arrhythmia AI
                 </Link>
               </li>
               <li>
-                <Link href="#diagnostic-suite" className="hover:text-white transition-colors">
-                  Brain Tumor MRI
+                <Link href="/detect-disease?model=heart" className="hover:text-white transition-colors">
+                  Cardiovascular Risk AI
                 </Link>
               </li>
               <li>
-                <Link href="#diagnostic-suite" className="hover:text-white transition-colors">
-                  Skin Allergy Classifier
+                <Link href="/detect-disease?model=brain" className="hover:text-white transition-colors">
+                  Brain Tumor MRI AI
+                </Link>
+              </li>
+              <li>
+                <Link href="/detect-disease?model=skin" className="hover:text-white transition-colors">
+                  Skin Lesion Classifier
                 </Link>
               </li>
             </ul>
@@ -148,9 +153,9 @@ export function Footer() {
         <div className="pt-6 border-t border-[#33312B] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#787363]">
           <p>© {new Date().getFullYear()} Hippo Health Inc. All rights reserved.</p>
           <div className="flex items-center gap-6">
-            <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-white transition-colors">Terms of Clinical Use</a>
-            <a href="#" className="hover:text-white transition-colors">HIPAA Compliance</a>
+            <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
+            <Link href="/terms-of-clinical-use" className="hover:text-white transition-colors">Terms of Clinical Use</Link>
+            <Link href="/hipaa-compliance" className="hover:text-white transition-colors">HIPAA Compliance</Link>
           </div>
         </div>
 

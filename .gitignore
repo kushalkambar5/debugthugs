@@ -26,3 +26,7 @@ __pycache__/
 *$py.class
 .venv
 venv/
+
+# Large Model Files
+chatbot/MedGemma/model/
+

@@ -24,10 +24,10 @@ const reviews = [
     rating: 5,
   },
   {
-    category: "3D Human Anatomy",
+    category: "2D Human Anatomy",
     badgeBg: "bg-[#E6F5EE] text-[#1E734C]",
     quote:
-      "As a physician, using the 3D Anatomy Viewer during consultations helps my patients visually grasp their condition far better than static diagrams. A game-changer for medical communication.",
+      "As a physician, using the 2D Anatomy Viewer during consultations helps my patients visually grasp their condition far better than static diagrams. A game-changer for medical communication.",
     author: "Dr. Robert Fox",
     role: "Clinical Specialist",
     rating: 5,

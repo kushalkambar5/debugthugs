@@ -46,16 +46,16 @@ const coreServices = [
   },
   {
     id: "anatomy",
-    title: "3D Human Anatomy Viewer",
+    title: "2D Human Anatomy Viewer",
     subtitle: "Interactive Organ Explorer",
     description:
-      "Full 3D visualization of human body systems. Highlight diseased organs, affected body parts, symptom clinical explanations & patient education tools.",
+      "Full 2D visualization of human body systems. Highlight diseased organs, affected body parts, symptom clinical explanations & patient education tools.",
     bgColor: "bg-[#FBEBF2]",
     borderColor: "border-[#F5C4DB]",
     textColor: "text-[#751B47]",
     badgeBg: "bg-white/80 text-[#942A5C]",
     iconName: "visibility",
-    bullets: ["3D Body Systems", "Diseased Organ Heatmap", "Symptom Map", "Doctor Educational Tool"],
+    bullets: ["2D Body Systems", "Diseased Organ Heatmap", "Symptom Map", "Doctor Educational Tool"],
   },
 ];
 

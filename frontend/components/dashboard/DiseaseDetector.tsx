@@ -116,7 +116,16 @@ const HEART_PRESETS = [
 export default function DiseaseDetector() {
   const [activeModel, setActiveModel] = useState<
     "bone" | "brain" | "ecg" | "heart" | "chest" | "skin"
-  >("bone");
+  >(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const model = params.get("model");
+      if (model && ["bone", "brain", "ecg", "heart", "chest", "skin"].includes(model)) {
+        return model as "bone" | "brain" | "ecg" | "heart" | "chest" | "skin";
+      }
+    }
+    return "bone";
+  });
 
   // Model states
   const [selectedFile, setSelectedFile] = useState<File | null>(null);

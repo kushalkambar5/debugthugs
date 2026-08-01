@@ -8,7 +8,7 @@ const features = [
   { text: "AI Medical Chatbot & RAG", icon: "smart_toy" },
   { text: "Doctor-Verified AI Recommendations", icon: "verified" },
   { text: "Google Health Smartwatch Sync", icon: "watch" },
-  { text: "3D Human Anatomy Viewer", icon: "view_in_ar" },
+  { text: "2D Human Anatomy Viewer", icon: "visibility" },
   { text: "Chest X-Ray YOLOv11 & TorchXRayVision", icon: "radiology" },
   { text: "Universal Bone Fracture Localization", icon: "healing" },
   { text: "Cardiovascular Risk XGBoost Engine", icon: "favorite" },

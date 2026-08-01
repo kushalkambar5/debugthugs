@@ -7,9 +7,11 @@ import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import SpecularButton from "@/components/SpecularButton";
 import { useSession, signOut } from "next-auth/react";
 import { ProfileModal } from "@/components/ProfileModal";
+import { usePathname } from "next/navigation";
 
 
 export function HeaderNav() {
+  const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: session, status } = useSession();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -45,19 +47,22 @@ export function HeaderNav() {
           {status === "authenticated" && (
             <>
 <>
-  <Link href="/visualize-body" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">
+  <Link href="/dashboard" className={`text-sm font-sans transition-colors ${pathname === "/dashboard" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#4D493E] hover:text-[#1C1B18]"}`}>
+    Dashboard
+  </Link>
+  <Link href="/visualize-body" className={`text-sm font-sans transition-colors ${pathname === "/visualize-body" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#4D493E] hover:text-[#1C1B18]"}`}>
     Visualize Body
   </Link>
-  <Link href="/detect-disease" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">
+  <Link href="/detect-disease" className={`text-sm font-sans transition-colors ${pathname === "/detect-disease" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#4D493E] hover:text-[#1C1B18]"}`}>
     Detect Disease
   </Link>
-  <Link href="/chat-with-hippo" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">
+  <Link href="/chat-with-hippo" className={`text-sm font-sans transition-colors ${pathname === "/chat-with-hippo" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#4D493E] hover:text-[#1C1B18]"}`}>
     Chat with Hippo
   </Link>
-  <Link href="/health-metrics" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">
+  <Link href="/health-metrics" className={`text-sm font-sans transition-colors ${pathname === "/health-metrics" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#4D493E] hover:text-[#1C1B18]"}`}>
     Health Metrics
   </Link>
-  <Link href="/medical-history" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">
+  <Link href="/medical-history" className={`text-sm font-sans transition-colors ${pathname === "/medical-history" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#4D493E] hover:text-[#1C1B18]"}`}>
     Medical History
   </Link>
 </>
@@ -213,19 +218,22 @@ export function HeaderNav() {
             {/* Mobile Drawer Navigation Links */}
             {status === "authenticated" && (
               <>
-                <Link href="/visualize-body" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4]">
+                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] ${pathname === "/dashboard" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#1C1B18]"}`}>
+                  Dashboard
+                </Link>
+                <Link href="/visualize-body" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] ${pathname === "/visualize-body" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#1C1B18]"}`}>
                   Visualize Body
                 </Link>
-                <Link href="/detect-disease" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4]">
+                <Link href="/detect-disease" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] ${pathname === "/detect-disease" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#1C1B18]"}`}>
                   Detect Disease
                 </Link>
-                <Link href="/chat-with-hippo" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4] flex items-center gap-2">
+                <Link href="/chat-with-hippo" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] flex items-center gap-2 ${pathname === "/chat-with-hippo" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#1C1B18]"}`}>
                   Chat with Hippo
                 </Link>
-                <Link href="/health-metrics" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4]">
+                <Link href="/health-metrics" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] ${pathname === "/health-metrics" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#1C1B18]"}`}>
                   Health Metrics
                 </Link>
-                <Link href="/medical-history" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4]">
+                <Link href="/medical-history" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] ${pathname === "/medical-history" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#1C1B18]"}`}>
                   Medical History
                 </Link>
               </>

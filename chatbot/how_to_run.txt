@@ -1,0 +1,9 @@
+cd d:\debug_thugs\chatbot\MedGemma
+python run_medgemma.py
+
+
+cd d:\debug_thugs\chatbot\LibreChat
+npm run backend
+
+
+

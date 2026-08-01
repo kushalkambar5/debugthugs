@@ -64,7 +64,7 @@ export function InteractiveFeatureShowcase() {
     { title: "1. AI Medical Chatbot", icon: "chat", color: "text-[#8C6B1F]" },
     { title: "2. Doctor-Verified AI", icon: "stethoscope", color: "text-[#1C5396]" },
     { title: "3. Smartwatch Sync", icon: "watch", color: "text-[#1E734C]" },
-    { title: "4. 3D Anatomy Viewer", icon: "visibility", color: "text-[#942A5C]" },
+    { title: "4. 2D Anatomy Viewer", icon: "visibility", color: "text-[#942A5C]" },
   ];
 
   return (
@@ -83,7 +83,7 @@ export function InteractiveFeatureShowcase() {
               Experience Hippo Health <span className="text-[#8C6B1F]">Live</span>
             </h2>
             <p className="text-xs sm:text-sm text-[#595446] font-sans max-w-xl mx-auto">
-              Scroll down to explore interactive AI medical chatbots, doctor verification, smartwatch sync, and 3D organ modeling in horizontal motion.
+              Scroll down to explore interactive AI medical chatbots, doctor verification, smartwatch sync, and 2D organ modeling in horizontal motion.
             </p>
           </div>
 
@@ -150,12 +150,12 @@ export function InteractiveFeatureShowcase() {
               </div>
             </div>
 
-            {/* PART 4: 3D HUMAN ANATOMY VIEWER */}
+            {/* PART 4: 2D HUMAN ANATOMY VIEWER */}
             <div className="relative h-[48vh] sm:h-[52vh] lg:h-[56vh] max-h-[520px] aspect-[1672/941] shrink-0 bg-white border border-[#E6E1D3] rounded-[28px] sm:rounded-[36px] p-2 sm:p-3 shadow-lg overflow-hidden">
               <div className="relative w-full h-full rounded-[20px] sm:rounded-[28px] overflow-hidden">
                 <Image
                   src="/homepage_images/humanbody.png"
-                  alt="3D Human Anatomy & Organ Disease Visualizer"
+                  alt="2D Human Anatomy & Organ Disease Visualizer"
                   fill
                   className="object-cover"
                 />
