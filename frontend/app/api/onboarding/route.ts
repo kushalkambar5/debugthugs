@@ -153,6 +153,7 @@ export async function POST(req: Request) {
               yearsExperience,
               bio: bio || null,
               hospitalAffiliation: hospitalAffiliation || null,
+              isVerified: true,
             })
             .where(eq(doctorProfiles.userId, userId));
         } else {
@@ -163,7 +164,7 @@ export async function POST(req: Request) {
             yearsExperience,
             bio: bio || null,
             hospitalAffiliation: hospitalAffiliation || null,
-            isVerified: false,
+            isVerified: true,
           });
         }
       });
