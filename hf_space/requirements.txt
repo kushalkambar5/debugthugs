@@ -11,3 +11,4 @@ numpy==1.26.2
 torchxrayvision==1.2.1
 scikit-image==0.22.0
 huggingface-hub<=0.24.6
+scikit-learn
