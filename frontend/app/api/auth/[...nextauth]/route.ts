@@ -18,7 +18,10 @@ export const authOptions: AuthOptions = {
         const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:5000";
         const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
+          },
           body: JSON.stringify({
             email: credentials.email,
             password: credentials.password,

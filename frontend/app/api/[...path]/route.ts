@@ -46,6 +46,9 @@ async function handleProxy(req: Request, pathSegments: string[]) {
     headers.set("content-type", "application/json");
   }
 
+  // Always set ngrok skip warning header
+  headers.set("ngrok-skip-browser-warning", "true");
+
   // Inject session info if user is logged in
   if (session?.user?.id) {
     headers.set("x-user-id", session.user.id);
@@ -70,7 +73,6 @@ async function handleProxy(req: Request, pathSegments: string[]) {
     }
 
     const res = await fetch(backendTargetUrl, fetchOptions);
-    const data = await res.arrayBuffer();
 
     const responseHeaders = new Headers();
     res.headers.forEach((value, key) => {
@@ -80,7 +82,7 @@ async function handleProxy(req: Request, pathSegments: string[]) {
       }
     });
 
-    return new NextResponse(data, {
+    return new NextResponse(res.body, {
       status: res.status,
       statusText: res.statusText,
       headers: responseHeaders,
