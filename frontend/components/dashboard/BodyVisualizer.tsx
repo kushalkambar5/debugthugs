@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import Image from "next/image";
 
 interface LayerPosition {
   top: string;
@@ -235,6 +234,329 @@ const KEYFRAME_STAGES: KeyFrameStage[] = [
   },
 ];
 
+// ── Types for right panel ────────────────────────────────────────────────────
+
+interface DiseaseScan {
+  id: string;
+  scanType: string;
+  predictionResult: any;
+  status: string;
+  aiExplanation: string | null;
+  affectedParts: string[] | null;
+  medicines: string[] | null;
+  createdAt: string;
+}
+
+interface MedicalReport {
+  id: string;
+  title: string;
+  description: string | null;
+  reportType: string | null;
+  fileUrl: string | null;
+  aiSummary: any;
+  medicines: string[] | null;
+  uploadedAt: string;
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function partMatches(partName: string, query: string): boolean {
+  return query.toLowerCase().includes(partName.toLowerCase()) ||
+    partName.toLowerCase().includes(query.toLowerCase());
+}
+
+function scanMatchesPart(scan: DiseaseScan, partId: string, partName: string): boolean {
+  if (!scan.affectedParts || scan.affectedParts.length === 0) {
+    // Fallback: match by scan type keywords
+    const st = scan.scanType.toLowerCase();
+    const pid = partId.toLowerCase();
+    if (pid === "heart" && (st.includes("heart") || st.includes("ecg"))) return true;
+    if (pid === "brain" && st.includes("brain")) return true;
+    if (pid === "lungs" && (st.includes("chest") || st.includes("lung"))) return true;
+    if (pid === "skeleton" && st.includes("bone")) return true;
+    if (pid === "skin" && st.includes("skin")) return true;
+    return false;
+  }
+  return scan.affectedParts.some((p) => partMatches(p, partId) || partMatches(p, partName));
+}
+
+function reportMatchesPart(report: MedicalReport, partId: string, partName: string): boolean {
+  const haystack = `${report.title} ${report.description || ""}`.toLowerCase();
+  return haystack.includes(partId.toLowerCase()) || haystack.includes(partName.toLowerCase());
+}
+
+function fmtDate(s: string) {
+  return new Date(s).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+// ── Right panel sub-components ───────────────────────────────────────────────
+
+function PartTimelinePanel({
+  selectedPartId,
+  selectedPartName,
+  selectedPartEmoji,
+  scans,
+  reports,
+  loading,
+}: {
+  selectedPartId: string | null;
+  selectedPartName: string;
+  selectedPartEmoji: string;
+  scans: DiseaseScan[];
+  reports: MedicalReport[];
+  loading: boolean;
+}) {
+  if (!selectedPartId) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center gap-2 px-4 py-6">
+        <span className="text-3xl">👆</span>
+        <p className="font-serif font-bold text-[#4D493E] text-sm">Click an organ</p>
+        <p className="text-[10px] text-[#787363] font-sans leading-relaxed">
+          Tap any organ on the body model to see its medical timeline here.
+        </p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-2">
+        <svg className="animate-spin h-6 w-6 text-[#8C6B1F]" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+        <span className="text-[10px] text-[#787363] font-sans">Loading records...</span>
+      </div>
+    );
+  }
+
+  const matchedScans = scans.filter((s) => scanMatchesPart(s, selectedPartId, selectedPartName));
+  const matchedReports = reports.filter((r) => reportMatchesPart(r, selectedPartId, selectedPartName));
+  const totalCount = matchedScans.length + matchedReports.length;
+
+  return (
+    <div className="space-y-3 overflow-y-auto pr-1 flex-1" style={{ maxHeight: "320px" }}>
+      <div className="flex items-center gap-2 sticky top-0 bg-[#FAF9F5] pb-2 z-10">
+        <span className="text-lg">{selectedPartEmoji}</span>
+        <div>
+          <p className="font-serif text-sm font-bold text-[#1C1B18] leading-tight">{selectedPartName}</p>
+          <p className="text-[9px] text-[#787363] font-sans">{totalCount} related record{totalCount !== 1 ? "s" : ""}</p>
+        </div>
+      </div>
+
+      {totalCount === 0 && (
+        <div className="text-center py-6">
+          <span className="material-symbols-outlined text-3xl text-[#DCD5C5]">folder_off</span>
+          <p className="text-xs text-[#787363] font-sans mt-1">No records for {selectedPartName}</p>
+        </div>
+      )}
+
+      {matchedScans.map((scan) => {
+        const diag = scan.predictionResult?.diagnosis || scan.predictionResult?.diagnosis_result ||
+          (scan.predictionResult?.tumor_found ? "Tumor Detected" : null) ||
+          scan.scanType.replace(/_/g, " ");
+        return (
+          <div key={scan.id} className="bg-purple-50 border border-purple-200 rounded-xl p-3 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[8px] font-bold uppercase tracking-wider text-purple-700 bg-purple-100 border border-purple-200 px-1.5 py-0.5 rounded font-sans">
+                AI Scan · {scan.scanType.replace(/_/g, " ")}
+              </span>
+              <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full ${scan.status === "COMPLETED" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                {scan.status}
+              </span>
+            </div>
+            <p className="font-serif text-xs font-bold text-[#1C1B18]">{diag}</p>
+            <p className="text-[9px] text-[#787363] font-sans">{fmtDate(scan.createdAt)}</p>
+            {scan.aiExplanation && (
+              <p className="text-[9px] text-[#4D493E] font-sans leading-relaxed line-clamp-2">{scan.aiExplanation}</p>
+            )}
+          </div>
+        );
+      })}
+
+      {matchedReports.map((report) => (
+        <div key={report.id} className="bg-sky-50 border border-sky-200 rounded-xl p-3 space-y-1">
+          <span className="text-[8px] font-bold uppercase tracking-wider text-sky-700 bg-sky-100 border border-sky-200 px-1.5 py-0.5 rounded font-sans">
+            Report · {report.reportType || "OTHER"}
+          </span>
+          <p className="font-serif text-xs font-bold text-[#1C1B18]">{report.title}</p>
+          <p className="text-[9px] text-[#787363] font-sans">{fmtDate(report.uploadedAt)}</p>
+          {report.description && (
+            <p className="text-[9px] text-[#4D493E] font-sans leading-relaxed line-clamp-2">{report.description}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ReportNewProblemForm({ onSuccess }: { onSuccess: () => void }) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [reportType, setReportType] = useState("OTHER");
+  const [reportDate, setReportDate] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] || null;
+    setFile(f);
+    if (f && f.type.startsWith("image/")) {
+      const url = URL.createObjectURL(f);
+      setFilePreview(url);
+    } else {
+      setFilePreview(null);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) { setErrorMsg("Title is required."); return; }
+    setSubmitting(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const fd = new FormData();
+      fd.append("title", title.trim());
+      fd.append("description", description.trim());
+      fd.append("reportType", reportType);
+      if (reportDate) fd.append("reportDate", reportDate);
+      if (file) fd.append("file", file);
+
+      const resp = await fetch("/api/medical-reports", { method: "POST", body: fd });
+      if (!resp.ok) {
+        const data = await resp.json();
+        throw new Error(data.message || "Failed to submit report.");
+      }
+      setSuccessMsg("Problem reported successfully!");
+      setTitle(""); setDescription(""); setReportType("OTHER"); setReportDate(""); setFile(null); setFilePreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      onSuccess();
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Submission failed.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {/* Title */}
+      <div>
+        <label className="block text-[9px] font-bold uppercase tracking-wider text-[#4D493E] mb-1 font-sans">Title *</label>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="e.g. Chest pain since Monday"
+          className="w-full px-3 py-2 bg-white border border-[#DCD5C5] rounded-xl text-[#1C1B18] placeholder-[#A8A28E] focus:outline-none focus:ring-2 focus:ring-[#8C6B1F]/30 focus:border-[#8C6B1F] text-xs font-sans"
+        />
+      </div>
+
+      {/* Description */}
+      <div>
+        <label className="block text-[9px] font-bold uppercase tracking-wider text-[#4D493E] mb-1 font-sans">Description</label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Describe your symptoms or condition..."
+          rows={3}
+          className="w-full px-3 py-2 bg-white border border-[#DCD5C5] rounded-xl text-[#1C1B18] placeholder-[#A8A28E] focus:outline-none focus:ring-2 focus:ring-[#8C6B1F]/30 focus:border-[#8C6B1F] text-xs font-sans resize-none"
+        />
+      </div>
+
+      {/* Report Type */}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-[9px] font-bold uppercase tracking-wider text-[#4D493E] mb-1 font-sans">Type</label>
+          <select
+            value={reportType}
+            onChange={(e) => setReportType(e.target.value)}
+            className="w-full px-2.5 py-2 bg-white border border-[#DCD5C5] rounded-xl text-[#1C1B18] focus:outline-none focus:ring-2 focus:ring-[#8C6B1F]/30 text-xs font-sans cursor-pointer"
+          >
+            {["LAB", "IMAGING", "PRESCRIPTION", "DISCHARGE", "OTHER"].map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-[9px] font-bold uppercase tracking-wider text-[#4D493E] mb-1 font-sans">Date</label>
+          <input
+            type="date"
+            value={reportDate}
+            onChange={(e) => setReportDate(e.target.value)}
+            className="w-full px-2.5 py-2 bg-white border border-[#DCD5C5] rounded-xl text-[#1C1B18] focus:outline-none focus:ring-2 focus:ring-[#8C6B1F]/30 text-xs font-sans"
+          />
+        </div>
+      </div>
+
+      {/* File Upload */}
+      <div>
+        <label className="block text-[9px] font-bold uppercase tracking-wider text-[#4D493E] mb-1 font-sans">
+          Attach File <span className="text-[#A8A28E] normal-case font-normal">(optional)</span>
+        </label>
+        <div
+          onClick={() => fileInputRef.current?.click()}
+          className="border-2 border-dashed border-[#DCD5C5] rounded-xl p-3 text-center cursor-pointer hover:border-[#8C6B1F] hover:bg-[#FAF6E8]/50 transition-all"
+        >
+          {filePreview ? (
+            <img src={filePreview} alt="preview" className="mx-auto max-h-24 object-contain rounded-lg" />
+          ) : file ? (
+            <div className="flex items-center justify-center gap-2 text-xs text-[#4D493E] font-sans">
+              <span className="material-symbols-outlined text-sm text-[#8C6B1F]">attach_file</span>
+              <span className="truncate max-w-[140px]">{file.name}</span>
+            </div>
+          ) : (
+            <>
+              <span className="material-symbols-outlined text-xl text-[#A8A28E]">cloud_upload</span>
+              <p className="text-[9px] text-[#787363] font-sans mt-1">Click to upload image or PDF</p>
+            </>
+          )}
+          <input ref={fileInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileChange} />
+        </div>
+        {file?.type.startsWith("image/") && (
+          <p className="text-[9px] text-[#8C6B1F] font-sans mt-1 flex items-center gap-1">
+            <span className="material-symbols-outlined text-[10px]">auto_awesome</span>
+            AI will generate a summary from this image
+          </p>
+        )}
+      </div>
+
+      {/* Error / Success */}
+      {errorMsg && <p className="text-[10px] text-red-600 font-sans bg-red-50 border border-red-200 px-3 py-1.5 rounded-xl">{errorMsg}</p>}
+      {successMsg && <p className="text-[10px] text-emerald-700 font-sans bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-1"><span className="material-symbols-outlined text-[12px]">check_circle</span>{successMsg}</p>}
+
+      <button
+        type="submit"
+        disabled={submitting}
+        className="w-full py-2.5 bg-[#1C1B18] hover:bg-[#8C6B1F] text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 font-sans"
+      >
+        {submitting ? (
+          <>
+            <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            Submitting...
+          </>
+        ) : (
+          <>
+            <span className="material-symbols-outlined text-sm">add_circle</span>
+            Submit Report
+          </>
+        )}
+      </button>
+    </form>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
+
 export default function BodyVisualizer() {
   const [mode, setMode] = useState<"detailed" | "keyframe">("detailed");
   const [stage, setStage] = useState<number>(1);
@@ -248,9 +570,37 @@ export default function BodyVisualizer() {
   const [hoveredLayer, setHoveredLayer] = useState<string | null>(null);
   const [pulseLayer, setPulseLayer] = useState<number | null>(null);
 
+  // Right panel state
+  const [selectedPart, setSelectedPart] = useState<DetailedStage | null>(null);
+  const [medScans, setMedScans] = useState<DiseaseScan[]>([]);
+  const [medReports, setMedReports] = useState<MedicalReport[]>([]);
+  const [medLoading, setMedLoading] = useState(false);
+  const [medLoaded, setMedLoaded] = useState(false);
+  const [rightTab, setRightTab] = useState<"timeline" | "report">("timeline");
+
   const activeList = mode === "detailed" ? DETAILED_STAGES : KEYFRAME_STAGES;
   const maxStages = activeList.length;
   const activeStage = activeList[stage - 1] || activeList[0];
+
+  // Fetch medical history once on mount
+  useEffect(() => {
+    (async () => {
+      setMedLoading(true);
+      try {
+        const resp = await fetch("/api/medical-history");
+        if (resp.ok) {
+          const data = await resp.json();
+          setMedScans(data.scans || []);
+          setMedReports(data.reports || []);
+        }
+      } catch (e) {
+        // Silently fail — right panel will show empty state
+      } finally {
+        setMedLoading(false);
+        setMedLoaded(true);
+      }
+    })();
+  }, []);
 
   // Trigger layer pulse animation when stage changes
   useEffect(() => {
@@ -311,6 +661,11 @@ export default function BodyVisualizer() {
     setStage(1);
   };
 
+  const handleOrganClick = (stageItem: DetailedStage) => {
+    setSelectedPart((prev) => (prev?.id === stageItem.id ? null : stageItem));
+    setRightTab("timeline");
+  };
+
   // Determine Layer Visibility
   const isLayerVisible = (stageItem: DetailedStage) => {
     if (mode === "detailed") {
@@ -355,7 +710,7 @@ export default function BodyVisualizer() {
   const progressPercent = ((stage - 1) / (maxStages - 1)) * 100;
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-[700px] w-full bg-[#FAF9F5] border border-[#E6E1D3] rounded-[32px] overflow-hidden shadow-xs relative">
+    <div className="flex flex-col xl:flex-row min-h-[700px] w-full bg-[#FAF9F5] border border-[#E6E1D3] rounded-[32px] overflow-hidden shadow-xs relative">
       {/* Tooltip */}
       {tooltip.visible && (
         <div
@@ -366,8 +721,8 @@ export default function BodyVisualizer() {
         </div>
       )}
 
-      {/* Control Panel (Sidebar) */}
-      <aside className="w-full lg:w-96 p-6 border-b lg:border-b-0 lg:border-r border-[#E6E1D3] flex flex-col gap-6 bg-[#FAF9F5] shrink-0">
+      {/* ── Left Control Panel ──────────────────────────────────────────────── */}
+      <aside className="w-full xl:w-80 p-5 border-b xl:border-b-0 xl:border-r border-[#E6E1D3] flex flex-col gap-5 bg-[#FAF9F5] shrink-0">
         {/* Mode Switcher */}
         <div className="flex gap-2 p-1 bg-[#FAF6E8] border border-[#E6E1D3] rounded-2xl">
           <button
@@ -480,13 +835,9 @@ export default function BodyVisualizer() {
               }`}
             >
               {isPlaying ? (
-                <>
-                  <span>⏸</span> Pause
-                </>
+                <><span>⏸</span> Pause</>
               ) : (
-                <>
-                  <span>▶</span> Auto Play
-                </>
+                <><span>▶</span> Auto Play</>
               )}
             </button>
             <button
@@ -543,22 +894,34 @@ export default function BodyVisualizer() {
         </div>
       </aside>
 
-      {/* Body Viewer (Main Content Area) */}
+      {/* ── Body Viewer ─────────────────────────────────────────────────────── */}
       <section className="flex-1 min-h-[500px] flex items-center justify-center p-6 relative overflow-hidden bg-radial from-[#F4E071]/5 to-transparent">
         {/* Glow behind body */}
         <div
           className="absolute w-80 h-[500px] rounded-full blur-3xl opacity-20 pointer-events-none transition-all duration-500"
-          style={{
-            backgroundColor: activeStage.color,
-          }}
+          style={{ backgroundColor: activeStage.color }}
         />
 
+        {selectedPart && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#1C1B18]/90 text-white px-3 py-1.5 rounded-full text-[10px] font-bold font-sans z-20 backdrop-blur-sm">
+            <span>{selectedPart.emoji}</span>
+            <span>{selectedPart.name} selected</span>
+            <button
+              onClick={() => setSelectedPart(null)}
+              className="ml-1 hover:text-red-300 transition-colors cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Body Model Relative Stack Container */}
-        <div className="relative w-[340px] h-[600px] sm:w-[400px] sm:h-[700px]">
+        <div className="relative w-[300px] h-[530px] sm:w-[360px] sm:h-[640px]">
           {DETAILED_STAGES.map((stageItem) => {
             const visible = isLayerVisible(stageItem);
             const isPulse = pulseLayer === stageItem.stage;
             const positions = stageItem.positions || (stageItem.position ? [stageItem.position] : [null]);
+            const isSelected = selectedPart?.id === stageItem.id;
 
             return positions.map((pos, idx) => {
               const uniqueId = positions.length > 1 ? `${stageItem.id}-${idx}` : stageItem.id;
@@ -568,13 +931,13 @@ export default function BodyVisualizer() {
                   ? `${stageItem.name} (${idx === 0 ? "Left" : "Right"})`
                   : stageItem.name;
 
-              // Compute inline styles based on image type
               const baseStyles: React.CSSProperties = {
                 position: "absolute",
                 zIndex: stageItem.zIndex,
                 transition: "opacity 0.4s ease, transform 0.4s ease, filter 0.2s ease",
                 opacity: visible ? 1 : 0,
                 pointerEvents: visible && stageItem.type === "organ" ? "auto" : "none",
+                cursor: stageItem.type === "organ" ? "pointer" : "default",
               };
 
               if (stageItem.type === "full-body") {
@@ -593,9 +956,10 @@ export default function BodyVisualizer() {
                 baseStyles.objectFit = "contain";
               }
 
-              // Active filter configurations
               let filterString = "";
-              if (isHovered) {
+              if (isSelected) {
+                filterString = `drop-shadow(0 0 14px ${stageItem.color}) brightness(1.1)`;
+              } else if (isHovered) {
                 filterString = "drop-shadow(0 0 10px rgba(140, 107, 31, 0.8)) brightness(1.05)";
               } else if (isPulse) {
                 filterString = "drop-shadow(0 0 12px rgba(28, 27, 24, 0.7))";
@@ -612,6 +976,7 @@ export default function BodyVisualizer() {
                   onMouseEnter={(e) => handleMouseEnter(e, `${stageItem.emoji} ${labelText}`, uniqueId)}
                   onMouseMove={handleMouseMove}
                   onMouseLeave={handleMouseLeave}
+                  onClick={() => visible && stageItem.type === "organ" && handleOrganClick(stageItem)}
                 >
                   <img
                     src={stageItem.file}
@@ -625,6 +990,78 @@ export default function BodyVisualizer() {
           })}
         </div>
       </section>
+
+      {/* ── Right Panel ─────────────────────────────────────────────────────── */}
+      <aside className="w-full xl:w-80 border-t xl:border-t-0 xl:border-l border-[#E6E1D3] bg-[#FAF9F5] flex flex-col shrink-0 overflow-hidden">
+        {/* Right panel tab switcher */}
+        <div className="flex gap-1.5 p-3 border-b border-[#E6E1D3] bg-white/60">
+          <button
+            onClick={() => setRightTab("timeline")}
+            className={`flex-1 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1 font-sans ${
+              rightTab === "timeline"
+                ? "bg-[#1C1B18] text-white"
+                : "text-[#787363] hover:text-[#1C1B18] bg-transparent"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[12px]">timeline</span>
+            Part Timeline
+          </button>
+          <button
+            onClick={() => setRightTab("report")}
+            className={`flex-1 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1 font-sans ${
+              rightTab === "report"
+                ? "bg-[#1C1B18] text-white"
+                : "text-[#787363] hover:text-[#1C1B18] bg-transparent"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[12px]">add_circle</span>
+            Report Problem
+          </button>
+        </div>
+
+        {/* Part Timeline section */}
+        {rightTab === "timeline" && (
+          <div className="flex-1 p-4 flex flex-col overflow-hidden">
+            <div className="text-[10px] font-bold text-[#4D493E] uppercase tracking-wider mb-3 font-sans flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-sm text-[#8C6B1F]">timeline</span>
+              {selectedPart ? `${selectedPart.name} — History` : "Organ Timeline"}
+            </div>
+            <PartTimelinePanel
+              selectedPartId={selectedPart?.id || null}
+              selectedPartName={selectedPart?.name || ""}
+              selectedPartEmoji={selectedPart?.emoji || ""}
+              scans={medScans}
+              reports={medReports}
+              loading={medLoading}
+            />
+          </div>
+        )}
+
+        {/* Report New Problem section */}
+        {rightTab === "report" && (
+          <div className="flex-1 p-4 overflow-y-auto">
+            <div className="text-[10px] font-bold text-[#4D493E] uppercase tracking-wider mb-1 font-sans flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-sm text-[#8C6B1F]">add_circle</span>
+              Report New Problem
+            </div>
+            <p className="text-[9px] text-[#787363] font-sans mb-3 leading-relaxed">
+              Log a symptom, upload a scan image or PDF, or describe a condition. It will appear in your Medical History.
+            </p>
+            <ReportNewProblemForm
+              onSuccess={() => {
+                // Refresh medical records
+                fetch("/api/medical-history")
+                  .then((r) => r.json())
+                  .then((d) => {
+                    setMedScans(d.scans || []);
+                    setMedReports(d.reports || []);
+                  })
+                  .catch(() => {});
+              }}
+            />
+          </div>
+        )}
+      </aside>
     </div>
   );
 }
