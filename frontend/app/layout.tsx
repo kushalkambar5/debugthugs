@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import ClickSpark from "@/components/ClickSpark";
 import ExtensionErrorFilter from "@/components/ExtensionErrorFilter";
+import { Providers } from "@/components/providers";
+
 
 export const metadata: Metadata = {
   title: "Hippo Health — Precision AI & Clinical Healthcare Platform",
@@ -76,16 +78,18 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-[#F6F4EF] text-[#1C1B18] font-sans selection:bg-[#F4E071] selection:text-[#1C1B18]">
-        <ExtensionErrorFilter />
-        <ClickSpark
-          sparkColor="#10B981"
-          sparkSize={10}
-          sparkRadius={15}
-          sparkCount={8}
-          duration={400}
-        >
-          {children}
-        </ClickSpark>
+        <Providers>
+          <ExtensionErrorFilter />
+          <ClickSpark
+            sparkColor="#10B981"
+            sparkSize={10}
+            sparkRadius={15}
+            sparkCount={8}
+            duration={400}
+          >
+            {children}
+          </ClickSpark>
+        </Providers>
       </body>
     </html>
   );

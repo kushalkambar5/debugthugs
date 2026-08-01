@@ -30,7 +30,7 @@ export function HeroSection() {
 
           {/* Supporting Subtitle */}
           <p className="text-base sm:text-lg text-[#524E43] font-sans font-normal max-w-2xl leading-relaxed">
-            We don&apos;t believe in one-size-fits-all medicine. At Hippo Health, every patient receives thoughtful, doctor-verified care — powered by real-time smartwatch biometrics, 3D anatomical modeling, and 10+ clinical AI engines.
+            A modern way to keep track of your health and wellness, with AI-powered insights and recommendations. You can also scan your medical reports, scans etc.
           </p>
 
           {/* Primary Action & Avatar Proof Stack */}
