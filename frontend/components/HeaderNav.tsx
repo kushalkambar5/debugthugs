@@ -65,6 +65,14 @@ export function HeaderNav() {
   <Link href="/medical-history" className={`text-sm font-sans transition-colors ${pathname === "/medical-history" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#4D493E] hover:text-[#1C1B18]"}`}>
     Medical History
   </Link>
+  <Link href="/chat" className={`text-sm font-sans transition-colors flex items-center gap-1 ${pathname === "/chat" ? "font-bold text-[#1C5396]" : "font-medium text-[#4D493E] hover:text-[#1C5396]"}`}>
+    Clinical Chat
+  </Link>
+  {session?.user?.role === "PATIENT" && (
+    <Link href="/manage-doctors" className={`text-sm font-sans transition-colors ${pathname === "/manage-doctors" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#4D493E] hover:text-[#1C1B18]"}`}>
+      Manage Doctors
+    </Link>
+  )}
 </>
             </>
           )}
@@ -236,6 +244,14 @@ export function HeaderNav() {
                 <Link href="/medical-history" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] ${pathname === "/medical-history" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#1C1B18]"}`}>
                   Medical History
                 </Link>
+                <Link href="/chat" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] flex items-center gap-2 ${pathname === "/chat" ? "font-bold text-[#1C5396]" : "font-medium text-[#1C1B18] hover:text-[#1C5396]"}`}>
+                  Clinical Chat
+                </Link>
+                {session?.user?.role === "PATIENT" && (
+                  <Link href="/manage-doctors" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] ${pathname === "/manage-doctors" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#1C1B18]"}`}>
+                    Manage Doctors
+                  </Link>
+                )}
               </>
             )}
             {status !== "authenticated" && (

@@ -289,7 +289,7 @@ function fmtDate(s: string) {
   return new Date(s).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-// ── Right panel sub-components ───────────────────────────────────────────────
+// ── Right panel sub-components ───────────────────────────────────────────────────────
 
 function PartTimelinePanel({
   selectedPartId,
@@ -306,6 +306,20 @@ function PartTimelinePanel({
   reports: MedicalReport[];
   loading: boolean;
 }) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   if (!selectedPartId) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center gap-2 px-4 py-6">
@@ -355,37 +369,95 @@ function PartTimelinePanel({
         const diag = scan.predictionResult?.diagnosis || scan.predictionResult?.diagnosis_result ||
           (scan.predictionResult?.tumor_found ? "Tumor Detected" : null) ||
           scan.scanType.replace(/_/g, " ");
+        const isOpen = expandedIds.has(scan.id);
         return (
-          <div key={scan.id} className="bg-purple-50 border border-purple-200 rounded-xl p-3 space-y-1">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[8px] font-bold uppercase tracking-wider text-purple-700 bg-purple-100 border border-purple-200 px-1.5 py-0.5 rounded font-sans">
-                AI Scan · {scan.scanType.replace(/_/g, " ")}
-              </span>
-              <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full ${scan.status === "COMPLETED" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                {scan.status}
-              </span>
-            </div>
-            <p className="font-serif text-xs font-bold text-[#1C1B18]">{diag}</p>
-            <p className="text-[9px] text-[#787363] font-sans">{fmtDate(scan.createdAt)}</p>
-            {scan.aiExplanation && (
-              <p className="text-[9px] text-[#4D493E] font-sans leading-relaxed line-clamp-2">{scan.aiExplanation}</p>
+          <div
+            key={scan.id}
+            className="bg-purple-50 border border-purple-200 rounded-xl overflow-hidden transition-all"
+          >
+            {/* Clickable header row */}
+            <button
+              onClick={() => toggleExpand(scan.id)}
+              className="w-full flex items-center justify-between gap-2 p-3 cursor-pointer hover:bg-purple-100/60 transition-colors text-left"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[8px] font-bold uppercase tracking-wider text-purple-700 bg-purple-100 border border-purple-200 px-1.5 py-0.5 rounded font-sans shrink-0">
+                  AI Scan · {scan.scanType.replace(/_/g, " ")}
+                </span>
+                <span className="font-serif text-xs font-bold text-[#1C1B18] truncate">{diag}</span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full ${scan.status === "COMPLETED" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                  {scan.status}
+                </span>
+                <span className="material-symbols-outlined text-purple-500 transition-transform duration-200" style={{ fontSize: "14px", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                  expand_more
+                </span>
+              </div>
+            </button>
+
+            {/* Expandable details */}
+            {isOpen && (
+              <div className="px-3 pb-3 space-y-1 border-t border-purple-200">
+                <p className="text-[9px] text-[#787363] font-sans pt-2">{fmtDate(scan.createdAt)}</p>
+                {scan.aiExplanation && (
+                  <p className="text-[9px] text-[#4D493E] font-sans leading-relaxed">{scan.aiExplanation}</p>
+                )}
+                {scan.medicines && scan.medicines.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {scan.medicines.map((m, i) => (
+                      <span key={i} className="text-[8px] bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded-full font-sans font-semibold">{m}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         );
       })}
 
-      {matchedReports.map((report) => (
-        <div key={report.id} className="bg-sky-50 border border-sky-200 rounded-xl p-3 space-y-1">
-          <span className="text-[8px] font-bold uppercase tracking-wider text-sky-700 bg-sky-100 border border-sky-200 px-1.5 py-0.5 rounded font-sans">
-            Report · {report.reportType || "OTHER"}
-          </span>
-          <p className="font-serif text-xs font-bold text-[#1C1B18]">{report.title}</p>
-          <p className="text-[9px] text-[#787363] font-sans">{fmtDate(report.uploadedAt)}</p>
-          {report.description && (
-            <p className="text-[9px] text-[#4D493E] font-sans leading-relaxed line-clamp-2">{report.description}</p>
-          )}
-        </div>
-      ))}
+      {matchedReports.map((report) => {
+        const isOpen = expandedIds.has(report.id);
+        return (
+          <div
+            key={report.id}
+            className="bg-sky-50 border border-sky-200 rounded-xl overflow-hidden transition-all"
+          >
+            {/* Clickable header row */}
+            <button
+              onClick={() => toggleExpand(report.id)}
+              className="w-full flex items-center justify-between gap-2 p-3 cursor-pointer hover:bg-sky-100/60 transition-colors text-left"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[8px] font-bold uppercase tracking-wider text-sky-700 bg-sky-100 border border-sky-200 px-1.5 py-0.5 rounded font-sans shrink-0">
+                  {report.reportType || "OTHER"}
+                </span>
+                <span className="font-serif text-xs font-bold text-[#1C1B18] truncate">{report.title}</span>
+              </div>
+              <span className="material-symbols-outlined text-sky-400 transition-transform duration-200 shrink-0" style={{ fontSize: "14px", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                expand_more
+              </span>
+            </button>
+
+            {/* Expandable details */}
+            {isOpen && (
+              <div className="px-3 pb-3 space-y-1 border-t border-sky-200">
+                <p className="text-[9px] text-[#787363] font-sans pt-2">{fmtDate(report.uploadedAt)}</p>
+                {report.description && (
+                  <p className="text-[9px] text-[#4D493E] font-sans leading-relaxed">{report.description}</p>
+                )}
+                {report.medicines && report.medicines.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {report.medicines.map((m, i) => (
+                      <span key={i} className="text-[8px] bg-sky-200 text-sky-800 px-1.5 py-0.5 rounded-full font-sans font-semibold">{m}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -569,6 +641,7 @@ export default function BodyVisualizer() {
   });
   const [hoveredLayer, setHoveredLayer] = useState<string | null>(null);
   const [pulseLayer, setPulseLayer] = useState<number | null>(null);
+  const [clickedOrganTopId, setClickedOrganTopId] = useState<string | null>(null);
 
   // Right panel state
   const [selectedPart, setSelectedPart] = useState<DetailedStage | null>(null);
@@ -662,7 +735,9 @@ export default function BodyVisualizer() {
   };
 
   const handleOrganClick = (stageItem: DetailedStage) => {
-    setSelectedPart((prev) => (prev?.id === stageItem.id ? null : stageItem));
+    const isSame = selectedPart?.id === stageItem.id;
+    setSelectedPart(isSame ? null : stageItem);
+    setClickedOrganTopId(isSame ? null : stageItem.id);
     setRightTab("timeline");
   };
 
@@ -721,181 +796,36 @@ export default function BodyVisualizer() {
         </div>
       )}
 
-      {/* ── Left Control Panel ──────────────────────────────────────────────── */}
-      <aside className="w-full xl:w-80 p-5 border-b xl:border-b-0 xl:border-r border-[#E6E1D3] flex flex-col gap-5 bg-[#FAF9F5] shrink-0">
-        {/* Mode Switcher */}
-        <div className="flex gap-2 p-1 bg-[#FAF6E8] border border-[#E6E1D3] rounded-2xl">
-          <button
-            onClick={() => handleModeChange("detailed")}
-            className={`flex-1 py-2.5 rounded-xl font-sans text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-              mode === "detailed"
-                ? "bg-[#1C1B18] text-white shadow-xs"
-                : "text-[#787363] hover:text-[#1C1B18]"
-            }`}
-          >
-            <span>🔢</span> Step-by-Step (13)
-          </button>
-          <button
-            onClick={() => handleModeChange("keyframe")}
-            className={`flex-1 py-2.5 rounded-xl font-sans text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-              mode === "keyframe"
-                ? "bg-[#1C1B18] text-white shadow-xs"
-                : "text-[#787363] hover:text-[#1C1B18]"
-            }`}
-          >
-            <span>🖼️</span> 5 Key Frames
-          </button>
-        </div>
 
-        {/* Panel Header */}
-        <div className="space-y-1.5">
-          <h3 className="font-serif text-xl font-bold text-[#1C1B18] flex items-center gap-2">
-            <span className="w-1 h-5 bg-[#8C6B1F] rounded-full" />
-            {mode === "detailed" ? "Detailed Layer Slider" : "5 Key Frames Slider"}
-          </h3>
-          <p className="text-xs text-[#787363] font-sans">
-            {mode === "detailed"
-              ? "Reveal cumulative anatomical components step-by-step."
-              : "Slide through 5 isolated systems: Bones, Circulatory, Organs, Muscles, or Skin."}
-          </p>
-        </div>
-
-        {/* Active Stage Card */}
-        <div
-          className="p-4 border rounded-2xl bg-white shadow-2xs transition-all duration-300"
-          style={{ borderColor: activeStage.color }}
-        >
-          <span
-            className="inline-block text-[10px] font-bold tracking-wider uppercase px-2.5 py-0.5 rounded-md mb-2 bg-[#FAF6E8] border"
-            style={{ color: activeStage.color, borderColor: `${activeStage.color}30` }}
-          >
-            Stage {stage} of {maxStages}
-          </span>
-          <div className="text-3xl mb-2">{activeStage.emoji}</div>
-          <h4 className="font-serif text-lg font-bold text-[#1C1B18] mb-1">{activeStage.name}</h4>
-          <p className="text-xs text-[#615C4F] font-sans leading-relaxed">{activeStage.description}</p>
-        </div>
-
-        {/* Slider & Play Controls */}
-        <div className="p-4 bg-[#FAF6E8] border border-[#E6E1D3] rounded-2xl space-y-4">
-          <div className="flex justify-between text-[10px] font-bold text-[#787363] font-sans">
-            <span>{mode === "detailed" ? "🦴 SKELETON" : "🦴 BONE"}</span>
-            <span>🧑 FULL BODY</span>
-          </div>
-
-          {/* Slider input */}
-          <div className="relative w-full h-2 flex items-center">
-            <input
-              type="range"
-              min="1"
-              max={maxStages}
-              value={stage}
-              onChange={(e) => {
-                setIsPlaying(false);
-                setStage(parseInt(e.target.value, 10));
-              }}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-            />
-            {/* Custom Track */}
-            <div className="absolute left-0 right-0 h-2 bg-[#E6E1D3] rounded-full z-0 overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-75"
-                style={{
-                  width: `${progressPercent}%`,
-                  background: `linear-gradient(90deg, #38bdf8, #ef4444, #f97316, #ea580c, #f59e0b)`,
-                }}
-              />
-            </div>
-            {/* Custom Thumb */}
-            <div
-              className="absolute w-5 h-5 bg-white border-2 rounded-full z-10 -ml-2.5 flex items-center justify-center shadow-xs pointer-events-none transition-all duration-75"
-              style={{
-                left: `${progressPercent}%`,
-                borderColor: activeStage.color,
-              }}
-            >
-              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: activeStage.color }} />
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={handlePrev}
-              disabled={stage === 1}
-              className="flex-1 py-2 bg-white hover:bg-[#FAF6E8] border border-[#DCD5C5] disabled:opacity-40 disabled:hover:bg-white rounded-xl text-xs font-bold text-[#1C1B18] transition-all cursor-pointer flex items-center justify-center gap-1"
-            >
-              ◀ Prev
-            </button>
-            <button
-              onClick={handlePlayToggle}
-              className={`flex-1 py-2 border rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                isPlaying
-                  ? "bg-[#B34515] text-white border-transparent"
-                  : "bg-white hover:bg-[#FAF6E8] border border-[#DCD5C5] text-[#1C1B18]"
-              }`}
-            >
-              {isPlaying ? (
-                <><span>⏸</span> Pause</>
-              ) : (
-                <><span>▶</span> Auto Play</>
-              )}
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={stage === maxStages}
-              className="flex-1 py-2 bg-white hover:bg-[#FAF6E8] border border-[#DCD5C5] disabled:opacity-40 disabled:hover:bg-white rounded-xl text-xs font-bold text-[#1C1B18] transition-all cursor-pointer flex items-center justify-center gap-1"
-            >
-              Next ▶
-            </button>
-          </div>
-        </div>
-
-        {/* Stages Timeline List */}
-        <div className="flex-1 overflow-y-auto max-h-[220px] pr-1 space-y-2 custom-scrollbar">
-          <div className="text-[10px] font-bold text-[#787363] uppercase tracking-wider mb-2">Stage Timeline</div>
-          {activeList.map((stageItem) => {
-            const isActive = stageItem.stage === stage;
-            const isPassed = stageItem.stage < stage;
-
+      {/* ── Body Viewer ─────────────────────────────────────────────────────── */}
+      <section className="flex-1 min-h-[500px] flex flex-col items-center justify-start pt-4 pb-6 px-6 relative overflow-hidden bg-radial from-[#F4E071]/5 to-transparent">
+        {/* ── 5 Keyframe Quick-Select Tabs ── */}
+        <div className="flex gap-1.5 mb-4 z-20 flex-wrap justify-center">
+          {KEYFRAME_STAGES.map((kf) => {
+            const isKfActive = mode === "keyframe" && stage === kf.stage;
             return (
-              <div
-                key={stageItem.stage}
-                onClick={() => handleTimelineClick(stageItem.stage)}
-                className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                  isActive
-                    ? "bg-white border-[#8C6B1F] shadow-2xs font-semibold"
-                    : isPassed
-                    ? "bg-[#FAF6E8]/40 border-[#E6E1D3]/50 opacity-80"
-                    : "bg-white/50 border-[#E6E1D3]/30 opacity-60 hover:opacity-90"
+              <button
+                key={kf.stage}
+                onClick={() => {
+                  setIsPlaying(false);
+                  setMode("keyframe");
+                  setStage(kf.stage);
+                }}
+                title={kf.name}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold font-sans border transition-all cursor-pointer whitespace-nowrap ${
+                  isKfActive
+                    ? "text-white shadow-sm"
+                    : "bg-white/80 border-[#E6E1D3] text-[#4D493E] hover:border-[#8C6B1F] hover:bg-[#FAF6E8]"
                 }`}
+                style={isKfActive ? { backgroundColor: kf.color, borderColor: kf.color } : {}}
               >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-all ${
-                      isActive
-                        ? "bg-[#1C1B18] text-white"
-                        : isPassed
-                        ? "bg-[#E6F5EE] text-[#155939] border border-[#B2E6CF]"
-                        : "bg-[#E6E1D3]/30 text-[#787363]"
-                    }`}
-                  >
-                    {stageItem.stage}
-                  </div>
-                  <span className="text-xs text-[#1C1B18]">
-                    {stageItem.emoji} {stageItem.name}
-                  </span>
-                </div>
-                <span className="text-[10px] font-bold">
-                  {isActive ? "👁️" : isPassed ? "✓" : "○"}
-                </span>
-              </div>
+                <span>{kf.emoji}</span>
+                <span className="hidden sm:inline">{kf.name.replace(/^Frame \d+:\s*/, "")}</span>
+              </button>
             );
           })}
         </div>
-      </aside>
 
-      {/* ── Body Viewer ─────────────────────────────────────────────────────── */}
-      <section className="flex-1 min-h-[500px] flex items-center justify-center p-6 relative overflow-hidden bg-radial from-[#F4E071]/5 to-transparent">
         {/* Glow behind body */}
         <div
           className="absolute w-80 h-[500px] rounded-full blur-3xl opacity-20 pointer-events-none transition-all duration-500"
@@ -916,7 +846,7 @@ export default function BodyVisualizer() {
         )}
 
         {/* Body Model Relative Stack Container */}
-        <div className="relative w-[300px] h-[530px] sm:w-[360px] sm:h-[640px]">
+        <div className="relative w-[300px] h-[500px] sm:w-[340px] sm:h-[580px]">
           {DETAILED_STAGES.map((stageItem) => {
             const visible = isLayerVisible(stageItem);
             const isPulse = pulseLayer === stageItem.stage;
@@ -931,10 +861,11 @@ export default function BodyVisualizer() {
                   ? `${stageItem.name} (${idx === 0 ? "Left" : "Right"})`
                   : stageItem.name;
 
+              const isOrganOnTop = clickedOrganTopId === stageItem.id;
               const baseStyles: React.CSSProperties = {
                 position: "absolute",
-                zIndex: stageItem.zIndex,
-                transition: "opacity 0.4s ease, transform 0.4s ease, filter 0.2s ease",
+                zIndex: isOrganOnTop ? 100 : stageItem.zIndex,
+                transition: "opacity 0.4s ease, transform 0.4s ease, filter 0.2s ease, z-index 0s",
                 opacity: visible ? 1 : 0,
                 pointerEvents: visible && stageItem.type === "organ" ? "auto" : "none",
                 cursor: stageItem.type === "organ" ? "pointer" : "default",

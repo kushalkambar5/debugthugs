@@ -52,6 +52,14 @@ export default function DashboardPage() {
     { id: "metrics" as TabType, label: "See my Health Metrics", icon: "monitoring", href: "/health-metrics" },
   ];
 
+  // Doctor tabs for personal view
+  const doctorPersonalTabs = [
+    { id: "body" as TabType, label: "Visualize My Body", icon: "accessibility_new", href: "/visualize-body" },
+    { id: "disease" as TabType, label: "Detect Disease", icon: "biotech", href: "/detect-disease" },
+    { id: "chat" as TabType, label: "Chat with Hippo", icon: "forum", href: "/chat-with-hippo" },
+    { id: "metrics" as TabType, label: "See my Health Metrics", icon: "monitoring", href: "/health-metrics" },
+  ];
+
   return (
     <div className="min-h-screen flex flex-col bg-[#F6F4EF] text-[#1C1B18]">
       <HeaderNav />
@@ -119,8 +127,8 @@ export default function DashboardPage() {
           // Standard User View (or Doctor Personal View "My Dashboard")
           <section className="space-y-6">
             {/* Quick-access navigation cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {tabs.map((tab) => (
+            <div className={`grid gap-4 ${role === "PATIENT" ? "grid-cols-2 md:grid-cols-5" : "grid-cols-2 md:grid-cols-4"}`}>
+              {(role === "DOCTOR" ? doctorPersonalTabs : tabs).map((tab) => (
                 <Link
                   key={tab.id}
                   href={tab.href}
@@ -132,6 +140,18 @@ export default function DashboardPage() {
                   <span className="text-[11px] font-bold font-sans tracking-wide text-center leading-tight">{tab.label}</span>
                 </Link>
               ))}
+              {/* Patient-only: Chat with Doctor card */}
+              {role === "PATIENT" && (
+                <Link
+                  href="/chat"
+                  className="group px-5 py-5 rounded-2xl border border-[#1C5396]/20 bg-[#EAF3FB] hover:bg-[#C8DEF5]/40 hover:border-[#1C5396]/40 text-[#1C5396] transition-all flex flex-col items-center gap-2.5 shadow-xs cursor-pointer"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-[#C8DEF5]/50 border border-[#1C5396]/20 group-hover:bg-[#C8DEF5]/80 flex items-center justify-center transition-colors">
+                    <MaterialIcon name="chat" className="text-xl text-[#1C5396]" />
+                  </div>
+                  <span className="text-[11px] font-bold font-sans tracking-wide text-center leading-tight">Chat with Doctor</span>
+                </Link>
+              )}
             </div>
           </section>
         )}

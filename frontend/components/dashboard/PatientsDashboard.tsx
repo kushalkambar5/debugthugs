@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 
 interface Scan {
@@ -54,6 +55,7 @@ interface Patient {
 }
 
 export default function PatientsDashboard() {
+  const router = useRouter();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctorProfileId, setDoctorProfileId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,7 +63,6 @@ export default function PatientsDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
-  const [activeTabFilter, setActiveTabFilter] = useState<"all" | "assigned">("all");
 
   const fetchPatients = async () => {
     setLoading(true);
@@ -86,46 +87,14 @@ export default function PatientsDashboard() {
     fetchPatients();
   }, []);
 
-  const handleAssignToggle = async (patientId: string, currentlyAssigned: boolean) => {
-    setActionLoadingId(patientId);
-    try {
-      const resp = await fetch("/api/doctor/assign", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          patientId,
-          assign: !currentlyAssigned,
-        }),
-      });
-
-      if (!resp.ok) {
-        throw new Error("Failed to alter assignment link.");
-      }
-
-      await fetchPatients();
-    } catch (err: any) {
-      alert(err.message || "Operation failed.");
-    } finally {
-      setActionLoadingId(null);
-    }
-  };
-
   const selectedPatient = patients.find((p) => p.id === selectedPatientId);
 
-  // Filter patients based on search and assignment status
+  // Filter patients based on search
   const filteredPatients = patients.filter((p) => {
-    const matchesSearch =
+    return (
       p.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.email.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const isAssignedToMe = p.assignedDoctorId === doctorProfileId && p.assignmentStatus === "ACTIVE";
-
-    if (activeTabFilter === "assigned") {
-      return matchesSearch && isAssignedToMe;
-    }
-    return matchesSearch;
+      p.email.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   });
 
   return (
@@ -133,28 +102,12 @@ export default function PatientsDashboard() {
       
       {/* Search and Filters Header */}
       <div className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
-        {/* Tab switchers */}
-        <div className="flex bg-[#FAF6E8] border border-[#E6E1D3] p-1 rounded-2xl max-w-sm">
-          <button
-            onClick={() => setActiveTabFilter("all")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTabFilter === "all"
-                ? "bg-[#1C1B18] text-white shadow-2xs"
-                : "text-[#787363] hover:text-[#1C1B18]"
-            }`}
-          >
-            All System Patients ({patients.length})
-          </button>
-          <button
-            onClick={() => setActiveTabFilter("assigned")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTabFilter === "assigned"
-                ? "bg-[#1C1B18] text-white shadow-2xs"
-                : "text-[#787363] hover:text-[#1C1B18]"
-            }`}
-          >
-            My Patients ({patients.filter((p) => p.assignedDoctorId === doctorProfileId).length})
-          </button>
+        {/* Active Patients Title */}
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-xs font-bold uppercase tracking-wider text-[#787363] font-sans">
+            My Assigned Patients ({patients.length})
+          </span>
         </div>
 
         {/* Search Bar */}
@@ -271,21 +224,7 @@ export default function PatientsDashboard() {
                             Clinical View
                           </button>
                           
-                          <button
-                            disabled={actionLoadingId === p.id}
-                            onClick={() => handleAssignToggle(p.id, isAssignedToMe)}
-                            className={`px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase cursor-pointer transition-all ${
-                              isAssignedToMe
-                                ? "bg-[#FAF0E6] text-[#B34515] hover:bg-[#B34515] hover:text-white border border-[#F2C5B0]"
-                                : "bg-[#1C1B18] text-white hover:bg-[#8C6B1F]"
-                            }`}
-                          >
-                            {actionLoadingId === p.id
-                              ? "Updating..."
-                              : isAssignedToMe
-                              ? "Release Care"
-                              : "Assign Care"}
-                          </button>
+                          {/* Doctor cannot choose/assign/release patients directly */}
                         </td>
                       </tr>
                     );
@@ -451,6 +390,17 @@ export default function PatientsDashboard() {
                       ))}
                     </div>
                   )}
+                </div>
+
+                {/* Open Chat Action */}
+                <div className="pt-2 border-t border-[#E6E1D3]">
+                  <button
+                    onClick={() => router.push(`/chat?patientId=${selectedPatient.id}`)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#EAF3FB] hover:bg-[#C8DEF5]/60 border border-[#1C5396]/20 hover:border-[#1C5396]/40 text-[#1C5396] rounded-2xl text-xs font-bold uppercase tracking-wide transition-all cursor-pointer shadow-xs"
+                  >
+                    <MaterialIcon name="forum" className="text-base" />
+                    <span>Open Clinical Chat</span>
+                  </button>
                 </div>
 
               </div>

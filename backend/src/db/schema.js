@@ -74,6 +74,7 @@ export const doctorPatients = pgTable('doctor_patients', {
   patientId: uuid('patient_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   assignedAt: timestamp('assigned_at').defaultNow().notNull(),
   status: dpStatusEnum('status').default('ACTIVE'),
+  isActive: boolean('is_active').default(true).notNull(),
 }, (t) => ({
   pk: primaryKey({ columns: [t.doctorId, t.patientId] })
 }));
@@ -185,3 +186,15 @@ export const chatContexts = pgTable('chat_contexts', {
   lastSyncedAt: timestamp('last_synced_at').defaultNow(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const doctorPatientChats = pgTable('doctor_patient_chats', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  doctorId: uuid('doctor_id').notNull().references(() => doctorProfiles.id, { onDelete: 'cascade' }),
+  patientId: uuid('patient_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  messages: jsonb('messages').default([]).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (t) => ({
+  unqDoctorPatientChat: unique('unq_doctor_patient_chat').on(t.doctorId, t.patientId)
+}));
+

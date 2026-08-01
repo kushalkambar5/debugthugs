@@ -9,8 +9,9 @@ import {
   diseaseScans,
   healthMetrics,
   medicalReports,
+  doctorPatientChats,
 } from '../db/schema.js';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 import { uploadToR2 } from '../utils/r2.js';
 
 const router = Router();
@@ -244,23 +245,25 @@ router.post('/onboarding', authenticateProxyUser, upload.single('profileImage'),
           })
           .where(eq(users.id, userId));
 
-        if (selectedDoctorId) {
+        if (selectedDoctorId && selectedDoctorId !== 'undefined' && selectedDoctorId !== 'null' && selectedDoctorId !== '') {
           const existingConnection = await tx
             .select()
             .from(doctorPatients)
-            .where(eq(doctorPatients.patientId, userId));
+            .where(and(eq(doctorPatients.doctorId, selectedDoctorId), eq(doctorPatients.patientId, userId)));
 
-          if (existingConnection.length > 0) {
+          if (existingConnection.length === 0) {
+            await tx.insert(doctorPatients).values({
+              doctorId: selectedDoctorId,
+              patientId: userId,
+              status: 'ACTIVE',
+              isActive: true,
+            });
+          } else {
             await tx
-              .delete(doctorPatients)
-              .where(eq(doctorPatients.patientId, userId));
+              .update(doctorPatients)
+              .set({ isActive: true, status: 'ACTIVE' })
+              .where(and(eq(doctorPatients.doctorId, selectedDoctorId), eq(doctorPatients.patientId, userId)));
           }
-
-          await tx.insert(doctorPatients).values({
-            doctorId: selectedDoctorId,
-            patientId: userId,
-            status: 'ACTIVE',
-          });
         }
       });
     } else if (role === 'DOCTOR') {
@@ -371,10 +374,17 @@ router.get('/doctor/patients', authenticateProxyUser, async (req, res) => {
         assignedDoctorId: doctorPatients.doctorId,
         assignedAt: doctorPatients.assignedAt,
         assignmentStatus: doctorPatients.status,
+        isActive: doctorPatients.isActive,
       })
       .from(users)
-      .leftJoin(doctorPatients, eq(users.id, doctorPatients.patientId))
-      .where(eq(users.role, 'PATIENT'));
+      .innerJoin(doctorPatients, eq(users.id, doctorPatients.patientId))
+      .where(
+        and(
+          eq(users.role, 'PATIENT'),
+          eq(doctorPatients.doctorId, doctor.id),
+          eq(doctorPatients.isActive, true)
+        )
+      );
 
     const patientDetails = await Promise.all(
       allPatients.map(async (patient) => {
@@ -447,6 +457,112 @@ router.post('/doctor/assign', authenticateProxyUser, async (req, res) => {
   } catch (error) {
     console.error('Error assigning doctor:', error);
     return res.status(500).json({ message: error.message || 'An error occurred during doctor assignment.' });
+  }
+});
+
+// ==========================================
+// 6a. PATIENT DOCTOR MANAGEMENT
+// ==========================================
+router.get('/patient/doctors', authenticateProxyUser, async (req, res) => {
+  try {
+    const patientId = req.user.id;
+    
+    // Fetch all doctor profiles
+    const doctorsList = await db
+      .select({
+        profileId: doctorProfiles.id,
+        userId: users.id,
+        fullName: users.fullName,
+        email: users.email,
+        profileImageUrl: users.profileImageUrl,
+        specialization: doctorProfiles.specialization,
+        hospitalAffiliation: doctorProfiles.hospitalAffiliation,
+        yearsExperience: doctorProfiles.yearsExperience,
+        bio: doctorProfiles.bio,
+      })
+      .from(doctorProfiles)
+      .innerJoin(users, eq(doctorProfiles.userId, users.id));
+
+    // Fetch this patient's doctor connections
+    const connections = await db
+      .select()
+      .from(doctorPatients)
+      .where(eq(doctorPatients.patientId, patientId));
+
+    const connectionMap = {};
+    connections.forEach((conn) => {
+      connectionMap[conn.doctorId] = {
+        isActive: conn.isActive,
+        status: conn.status,
+      };
+    });
+
+    const result = doctorsList.map((doc) => ({
+      ...doc,
+      isAssociated: !!connectionMap[doc.profileId],
+      isActive: connectionMap[doc.profileId] ? connectionMap[doc.profileId].isActive : false,
+    }));
+
+    return res.json(result);
+  } catch (error) {
+    console.error('Error fetching patient doctors:', error);
+    return res.status(500).json({ message: error.message || 'An error occurred while retrieving doctors.' });
+  }
+});
+
+router.post('/patient/doctors/add', authenticateProxyUser, async (req, res) => {
+  try {
+    const { doctorId } = req.body;
+    const patientId = req.user.id;
+
+    if (!doctorId) {
+      return res.status(400).json({ message: 'Doctor ID is required.' });
+    }
+
+    const existing = await db
+      .select()
+      .from(doctorPatients)
+      .where(and(eq(doctorPatients.doctorId, doctorId), eq(doctorPatients.patientId, patientId)));
+
+    if (existing.length === 0) {
+      await db.insert(doctorPatients).values({
+        doctorId,
+        patientId,
+        status: 'ACTIVE',
+        isActive: true,
+      });
+    } else {
+      await db
+        .update(doctorPatients)
+        .set({ isActive: true, status: 'ACTIVE' })
+        .where(and(eq(doctorPatients.doctorId, doctorId), eq(doctorPatients.patientId, patientId)));
+    }
+
+    return res.json({ message: 'Doctor added successfully.' });
+  } catch (error) {
+    console.error('Error adding doctor:', error);
+    return res.status(500).json({ message: error.message || 'An error occurred while adding doctor.' });
+  }
+});
+
+router.post('/patient/doctors/toggle-active', authenticateProxyUser, async (req, res) => {
+  try {
+    const { doctorId, isActive } = req.body;
+    const patientId = req.user.id;
+
+    if (!doctorId || isActive === undefined) {
+      return res.status(400).json({ message: 'Doctor ID and isActive are required.' });
+    }
+
+    await db
+      .update(doctorPatients)
+      .set({ isActive: !!isActive })
+      .where(and(eq(doctorPatients.doctorId, doctorId), eq(doctorPatients.patientId, patientId)));
+
+    return res.json({ message: `Doctor active status successfully set to ${isActive}.` });
+  } catch (error) {
+    console.error('Error toggling doctor active status:', error);
+    return res.status(500).json({ message: error.message || 'An error occurred while updating status.' });
   }
 });
 
@@ -763,6 +879,311 @@ router.post('/user/profile-image', authenticateProxyUser, upload.single('file'),
   } catch (error) {
     console.error('[Profile Image Upload Error]', error);
     return res.status(500).json({ message: error.message || 'Failed to upload profile image.' });
+  }
+});
+
+// ==========================================
+// 12. DOCTOR-PATIENT CHAT ENDPOINTS
+// ==========================================
+
+// GET /api/chat/doctor-patient
+router.get('/chat/doctor-patient', authenticateProxyUser, async (req, res) => {
+  try {
+    const role = req.user.role;
+    const userId = req.user.id;
+
+    if (role === 'PATIENT') {
+      // Find the active doctor associated with this patient
+      const [association] = await db
+        .select()
+        .from(doctorPatients)
+        .where(
+          and(
+            eq(doctorPatients.patientId, userId),
+            eq(doctorPatients.isActive, true)
+          )
+        );
+
+      if (!association) {
+        return res.status(200).json({
+          success: false,
+          code: 'NO_DOCTOR_ASSIGNED',
+          message: 'No active doctor is currently assigned to you. Please link a doctor first.',
+        });
+      }
+
+      const doctorId = association.doctorId;
+
+      // Find or initialize chat
+      let [chat] = await db
+        .select()
+        .from(doctorPatientChats)
+        .where(
+          and(
+            eq(doctorPatientChats.doctorId, doctorId),
+            eq(doctorPatientChats.patientId, userId)
+          )
+        );
+
+      if (!chat) {
+        const [insertedChat] = await db
+          .insert(doctorPatientChats)
+          .values({
+            doctorId,
+            patientId: userId,
+            messages: [],
+          })
+          .returning();
+        chat = insertedChat;
+      }
+
+      // Fetch doctor user details
+      const [doctorProfile] = await db
+        .select({
+          specialization: doctorProfiles.specialization,
+          hospitalAffiliation: doctorProfiles.hospitalAffiliation,
+          userId: doctorProfiles.userId,
+        })
+        .from(doctorProfiles)
+        .where(eq(doctorProfiles.id, doctorId));
+
+      let otherUser = {
+        id: doctorId,
+        name: 'Doctor',
+        avatar: null,
+        role: 'DOCTOR',
+        specialization: doctorProfile?.specialization || 'General Practitioner',
+      };
+
+      if (doctorProfile) {
+        const [doctorUser] = await db
+          .select({
+            fullName: users.fullName,
+            profileImageUrl: users.profileImageUrl,
+          })
+          .from(users)
+          .where(eq(users.id, doctorProfile.userId));
+
+        if (doctorUser) {
+          otherUser.name = doctorUser.fullName;
+          otherUser.avatar = doctorUser.profileImageUrl;
+        }
+      }
+
+      return res.json({
+        success: true,
+        chatId: chat.id,
+        messages: chat.messages || [],
+        otherUser,
+      });
+
+    } else if (role === 'DOCTOR') {
+      const { patientId } = req.query;
+      if (!patientId) {
+        return res.status(400).json({ message: 'patientId query parameter is required.' });
+      }
+
+      // Find the doctor's profile
+      const [doctor] = await db
+        .select()
+        .from(doctorProfiles)
+        .where(eq(doctorProfiles.userId, userId));
+
+      if (!doctor) {
+        return res.status(404).json({ message: 'Doctor profile not found.' });
+      }
+
+      const doctorId = doctor.id;
+
+      // Verify the patient is assigned to this doctor and active
+      const [association] = await db
+        .select()
+        .from(doctorPatients)
+        .where(
+          and(
+            eq(doctorPatients.doctorId, doctorId),
+            eq(doctorPatients.patientId, patientId),
+            eq(doctorPatients.isActive, true)
+          )
+        );
+
+      if (!association) {
+        return res.status(403).json({ message: 'Access denied. This patient is not active in your care team.' });
+      }
+
+      // Find or initialize chat
+      let [chat] = await db
+        .select()
+        .from(doctorPatientChats)
+        .where(
+          and(
+            eq(doctorPatientChats.doctorId, doctorId),
+            eq(doctorPatientChats.patientId, patientId)
+          )
+        );
+
+      if (!chat) {
+        const [insertedChat] = await db
+          .insert(doctorPatientChats)
+          .values({
+            doctorId,
+            patientId,
+            messages: [],
+          })
+          .returning();
+        chat = insertedChat;
+      }
+
+      // Fetch patient user details
+      const [patientUser] = await db
+        .select({
+          fullName: users.fullName,
+          profileImageUrl: users.profileImageUrl,
+        })
+        .from(users)
+        .where(eq(users.id, patientId));
+
+      const otherUser = {
+        id: patientId,
+        name: patientUser?.fullName || 'Patient',
+        avatar: patientUser?.profileImageUrl || null,
+        role: 'PATIENT',
+      };
+
+      return res.json({
+        success: true,
+        chatId: chat.id,
+        messages: chat.messages || [],
+        otherUser,
+      });
+
+    } else {
+      return res.status(403).json({ message: 'Invalid role for chat access.' });
+    }
+  } catch (error) {
+    console.error('[Get Chat Error]', error);
+    return res.status(500).json({ message: error.message || 'Failed to retrieve chat.' });
+  }
+});
+
+// POST /api/chat/doctor-patient
+router.post('/chat/doctor-patient', authenticateProxyUser, async (req, res) => {
+  try {
+    const { text, patientId } = req.body;
+    const role = req.user.role;
+    const userId = req.user.id;
+
+    if (!text || typeof text !== 'string' || !text.trim()) {
+      return res.status(400).json({ message: 'Message text is required.' });
+    }
+
+    let doctorId, resolvedPatientId;
+
+    if (role === 'PATIENT') {
+      // Find the active doctor associated with this patient
+      const [association] = await db
+        .select()
+        .from(doctorPatients)
+        .where(
+          and(
+            eq(doctorPatients.patientId, userId),
+            eq(doctorPatients.isActive, true)
+          )
+        );
+
+      if (!association) {
+        return res.status(404).json({ message: 'No active doctor assigned. Cannot send message.' });
+      }
+
+      doctorId = association.doctorId;
+      resolvedPatientId = userId;
+
+    } else if (role === 'DOCTOR') {
+      if (!patientId) {
+        return res.status(400).json({ message: 'patientId is required for doctors sending messages.' });
+      }
+
+      // Find the doctor's profile
+      const [doctor] = await db
+        .select()
+        .from(doctorProfiles)
+        .where(eq(doctorProfiles.userId, userId));
+
+      if (!doctor) {
+        return res.status(404).json({ message: 'Doctor profile not found.' });
+      }
+
+      doctorId = doctor.id;
+      resolvedPatientId = patientId;
+
+      // Verify patient association
+      const [association] = await db
+        .select()
+        .from(doctorPatients)
+        .where(
+          and(
+            eq(doctorPatients.doctorId, doctorId),
+            eq(doctorPatients.patientId, resolvedPatientId),
+            eq(doctorPatients.isActive, true)
+          )
+        );
+
+      if (!association) {
+        return res.status(403).json({ message: 'Access denied. Patient not in your care team.' });
+      }
+    } else {
+      return res.status(403).json({ message: 'Invalid role for sending messages.' });
+    }
+
+    // Find or initialize the chat
+    let [chat] = await db
+      .select()
+      .from(doctorPatientChats)
+      .where(
+        and(
+          eq(doctorPatientChats.doctorId, doctorId),
+          eq(doctorPatientChats.patientId, resolvedPatientId)
+        )
+      );
+
+    if (!chat) {
+      const [insertedChat] = await db
+        .insert(doctorPatientChats)
+        .values({
+          doctorId,
+          patientId: resolvedPatientId,
+          messages: [],
+        })
+        .returning();
+      chat = insertedChat;
+    }
+
+    // Append the new message
+    const newMessage = {
+      senderId: userId,
+      senderRole: role,
+      text: text.trim(),
+      timestamp: new Date().toISOString(),
+    };
+
+    const updatedMessages = [...(chat.messages || []), newMessage];
+
+    await db
+      .update(doctorPatientChats)
+      .set({
+        messages: updatedMessages,
+        updatedAt: new Date(),
+      })
+      .where(eq(doctorPatientChats.id, chat.id));
+
+    return res.json({
+      success: true,
+      message: newMessage,
+    });
+
+  } catch (error) {
+    console.error('[Send Chat Error]', error);
+    return res.status(500).json({ message: error.message || 'Failed to send message.' });
   }
 });
 

@@ -392,6 +392,20 @@ function getMonthKey(d: Date) {
 }
 
 function TimelineView({ scans, reports, searchQuery }: { scans: DiseaseScan[]; reports: MedicalReport[]; searchQuery: string }) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   const allItems = buildTimeline(scans, reports).filter((item) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
@@ -454,8 +468,10 @@ function TimelineView({ scans, reports, searchQuery }: { scans: DiseaseScan[]; r
               const dotColor = isScan ? "bg-purple-500" : "bg-sky-500";
               const cardBg = isScan ? "bg-purple-50 border-purple-200" : "bg-sky-50 border-sky-200";
               const badgeCls = isScan ? "text-purple-700 bg-purple-100 border-purple-200" : "text-sky-700 bg-sky-100 border-sky-200";
+              const expandedBorderCls = isScan ? "border-purple-200" : "border-sky-200";
               const day = item.date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
               const time = item.date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+              const isOpen = expandedIds.has(item.id);
 
               const diagnosis = s ? (s.predictionResult?.diagnosis || s.predictionResult?.diagnosis_result ||
                 (s.predictionResult?.tumor_found ? "Tumor Detected" : null) ||
@@ -475,51 +491,99 @@ function TimelineView({ scans, reports, searchQuery }: { scans: DiseaseScan[]; r
                   </div>
 
                   {/* Card */}
-                  <div className={`flex-1 border rounded-2xl p-4 shadow-xs hover:shadow-md transition-all ${cardBg}`}>
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border ${badgeCls} font-sans`}>
-                        {isScan ? `AI Scan · ${s!.scanType.replace(/_/g, " ")}` : `Report · ${r!.reportType || "OTHER"}`}
+                  <div className={`flex-1 border rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all ${cardBg}`}>
+                    {/* Card header — always visible, click to expand */}
+                    <button
+                      onClick={() => toggleExpand(item.id)}
+                      className="w-full text-left p-4 flex items-start justify-between gap-3 cursor-pointer"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                          <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border ${badgeCls} font-sans`}>
+                            {isScan ? `AI Scan · ${s!.scanType.replace(/_/g, " ")}` : `Report · ${r!.reportType || "OTHER"}`}
+                          </span>
+                          {isScan && (
+                            <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full ${
+                              s!.status === "COMPLETED" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                            }`}>{s!.status}</span>
+                          )}
+                        </div>
+                        <h4 className="font-serif text-sm font-bold text-[#1C1B18] leading-tight truncate">
+                          {isScan ? (diagnosis || s!.scanType.replace(/_/g, " ")) : r!.title}
+                        </h4>
+                        {/* Tags row */}
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {isScan && s!.affectedParts?.slice(0, 3).map((p, pi) => (
+                            <span key={pi} className="text-[9px] font-semibold bg-white border border-purple-200 text-purple-700 px-1.5 py-0.5 rounded-full font-sans">{p}</span>
+                          ))}
+                          {isScan && s!.medicines?.slice(0, 2).map((m, mi) => (
+                            <span key={mi} className="text-[9px] font-semibold bg-white border border-violet-200 text-violet-700 px-1.5 py-0.5 rounded-full font-sans">{m}</span>
+                          ))}
+                          {!isScan && r!.medicines?.slice(0, 3).map((m, mi) => (
+                            <span key={mi} className="text-[9px] font-semibold bg-white border border-sky-200 text-sky-700 px-1.5 py-0.5 rounded-full font-sans">{m}</span>
+                          ))}
+                        </div>
+                      </div>
+                      <span
+                        className={`material-symbols-outlined text-lg shrink-0 mt-0.5 transition-transform duration-200 ${isScan ? "text-purple-400" : "text-sky-400"}`}
+                        style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                      >
+                        expand_more
                       </span>
-                      {isScan && (
-                        <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full ${
-                          s!.status === "COMPLETED" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
-                        }`}>{s!.status}</span>
-                      )}
-                    </div>
+                    </button>
 
-                    <h4 className="font-serif text-sm font-bold text-[#1C1B18] leading-tight">
-                      {isScan ? (diagnosis || s!.scanType.replace(/_/g, " ")) : r!.title}
-                    </h4>
-
-                    {isScan && s!.aiExplanation && (
-                      <p className="text-[11px] text-[#4D493E] font-sans mt-1.5 leading-relaxed line-clamp-2">
-                        {s!.aiExplanation}
-                      </p>
+                    {/* Expanded details — only shown for THIS card */}
+                    {isOpen && (
+                      <div className={`px-4 pb-4 pt-2 space-y-3 border-t ${expandedBorderCls} bg-white/60`}>
+                        {isScan && s!.aiExplanation && (
+                          <div>
+                            <span className="block text-[9px] font-bold tracking-wider uppercase text-[#4D493E] mb-1 font-sans">AI Explanation</span>
+                            <p className="text-[11px] text-[#4D493E] font-sans leading-relaxed">{s!.aiExplanation}</p>
+                          </div>
+                        )}
+                        {isScan && s!.aiSuggestions && s!.aiSuggestions.length > 0 && (
+                          <div>
+                            <span className="block text-[9px] font-bold tracking-wider uppercase text-[#4D493E] mb-1.5 font-sans">Recommendations</span>
+                            <ul className="space-y-1">
+                              {s!.aiSuggestions.map((sg, i) => (
+                                <li key={i} className="flex items-start gap-1.5 text-[11px] text-[#4D493E] font-sans">
+                                  <span className="mt-0.5 w-3.5 h-3.5 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center shrink-0">
+                                    <span className="material-symbols-outlined text-[9px] text-emerald-700">check</span>
+                                  </span>
+                                  {sg}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {!isScan && r!.description && (
+                          <div>
+                            <span className="block text-[9px] font-bold tracking-wider uppercase text-[#4D493E] mb-1 font-sans">Description</span>
+                            <p className="text-[11px] text-[#4D493E] font-sans leading-relaxed">{r!.description}</p>
+                          </div>
+                        )}
+                        {!isScan && r!.aiSummary && (
+                          <div>
+                            <span className="block text-[9px] font-bold tracking-wider uppercase text-[#4D493E] mb-1 font-sans">AI Summary</span>
+                            <p className="text-[11px] text-[#4D493E] font-sans leading-relaxed">
+                              {typeof r!.aiSummary === "string" ? r!.aiSummary : JSON.stringify(r!.aiSummary, null, 2)}
+                            </p>
+                          </div>
+                        )}
+                        {!isScan && r!.fileUrl && (
+                          <a
+                            href={r!.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-xl border bg-white text-sky-700 border-sky-200 hover:opacity-80 transition-opacity font-sans"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <span className="material-symbols-outlined text-xs">open_in_new</span>
+                            View Report File
+                          </a>
+                        )}
+                      </div>
                     )}
-                    {!isScan && r!.description && (
-                      <p className="text-[11px] text-[#4D493E] font-sans mt-1.5 leading-relaxed line-clamp-2">
-                        {r!.description}
-                      </p>
-                    )}
-
-                    {/* Tags row */}
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {isScan && s!.affectedParts?.slice(0, 3).map((p, pi) => (
-                        <span key={pi} className="text-[9px] font-semibold bg-white border border-purple-200 text-purple-700 px-1.5 py-0.5 rounded-full font-sans">
-                          {p}
-                        </span>
-                      ))}
-                      {isScan && s!.medicines?.slice(0, 2).map((m, mi) => (
-                        <span key={mi} className="text-[9px] font-semibold bg-white border border-violet-200 text-violet-700 px-1.5 py-0.5 rounded-full font-sans">
-                          {m}
-                        </span>
-                      ))}
-                      {!isScan && r!.medicines?.slice(0, 3).map((m, mi) => (
-                        <span key={mi} className="text-[9px] font-semibold bg-white border border-sky-200 text-sky-700 px-1.5 py-0.5 rounded-full font-sans">
-                          {m}
-                        </span>
-                      ))}
-                    </div>
                   </div>
                 </div>
               );
@@ -745,7 +809,7 @@ export default function MedicalHistoryPage() {
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                  <div className="flex flex-col gap-4">
                     {filteredScans.map((scan) => (
                       <ScanCard key={scan.id} scan={scan} />
                     ))}
@@ -787,7 +851,7 @@ export default function MedicalHistoryPage() {
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                  <div className="flex flex-col gap-4">
                     {filteredReports.map((report) => (
                       <ReportCard key={report.id} report={report} />
                     ))}
