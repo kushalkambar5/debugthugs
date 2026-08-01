@@ -1,14 +1,126 @@
 import { Router } from 'express';
+import jwt from 'jsonwebtoken';
 import { db } from '../db/index.js';
 import { healthMetrics } from '../db/schema.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 
 const router = Router();
 
+// Middleware to extract user from proxy headers or JWT
+const authenticateUser = (req, res, next) => {
+  const userId = req.headers['x-user-id'];
+  const userRole = req.headers['x-user-role'];
+
+  if (userId) {
+    req.user = { id: userId, role: userRole };
+    return next();
+  }
+
+  // Fallback to JWT Bearer token
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = decoded;
+      return next();
+    } catch (err) {
+      return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
+  }
+
+  return res.status(401).json({ error: 'Unauthorized. Missing x-user-id or Authorization header.' });
+};
+
+/**
+ * GET /api/health/metrics
+ */
+router.get('/metrics', authenticateUser, async (req, res) => {
+  try {
+    let patientId = req.user.id;
+    if (req.user.role === 'DOCTOR' && req.query.patientId) {
+      patientId = req.query.patientId;
+    }
+    const metrics = await db
+      .select()
+      .from(healthMetrics)
+      .where(eq(healthMetrics.patientId, patientId))
+      .orderBy(desc(healthMetrics.metricDate));
+
+    return res.json(metrics);
+  } catch (error) {
+    console.error('Error fetching health metrics:', error);
+    return res.status(500).json({ message: 'Internal server error.', error: error.message });
+  }
+});
+
+/**
+ * POST /api/health/metrics
+ */
+router.post('/metrics', authenticateUser, async (req, res) => {
+  try {
+    let patientId = req.user.id;
+    if (req.user.role === 'DOCTOR' && req.body.patientId) {
+      patientId = req.body.patientId;
+    }
+
+    const {
+      steps,
+      heartRateAvg,
+      heartRateMin,
+      heartRateMax,
+      caloriesBurnt,
+      distanceMeters,
+      spo2Percentage,
+      sleepDurationMinutes,
+      metricDate,
+      source,
+    } = req.body;
+
+    const dateToUse = metricDate || new Date().toISOString().slice(0, 10);
+
+    const existing = await db
+      .select({ id: healthMetrics.id })
+      .from(healthMetrics)
+      .where(and(eq(healthMetrics.patientId, patientId), eq(healthMetrics.metricDate, dateToUse)))
+      .limit(1);
+
+    const metricPayload = {
+      patientId,
+      steps: steps !== undefined && steps !== null && steps !== '' ? parseInt(steps, 10) : null,
+      heartRateAvg: heartRateAvg !== undefined && heartRateAvg !== null && heartRateAvg !== '' ? parseInt(heartRateAvg, 10) : null,
+      heartRateMin: heartRateMin !== undefined && heartRateMin !== null && heartRateMin !== '' ? parseInt(heartRateMin, 10) : null,
+      heartRateMax: heartRateMax !== undefined && heartRateMax !== null && heartRateMax !== '' ? parseInt(heartRateMax, 10) : null,
+      caloriesBurnt: caloriesBurnt !== undefined && caloriesBurnt !== null && caloriesBurnt !== '' ? parseFloat(caloriesBurnt).toFixed(2) : null,
+      distanceMeters: distanceMeters !== undefined && distanceMeters !== null && distanceMeters !== '' ? parseFloat(distanceMeters).toFixed(2) : null,
+      spo2Percentage: spo2Percentage !== undefined && spo2Percentage !== null && spo2Percentage !== '' ? parseFloat(spo2Percentage).toFixed(2) : null,
+      sleepDurationMinutes: sleepDurationMinutes !== undefined && sleepDurationMinutes !== null && sleepDurationMinutes !== '' ? parseInt(sleepDurationMinutes, 10) : null,
+      source: source || 'MANUAL',
+      syncedAt: new Date(),
+    };
+
+    if (existing.length > 0) {
+      await db
+        .update(healthMetrics)
+        .set(metricPayload)
+        .where(and(eq(healthMetrics.patientId, patientId), eq(healthMetrics.metricDate, dateToUse)));
+    } else {
+      await db.insert(healthMetrics).values({
+        ...metricPayload,
+        metricDate: dateToUse,
+      });
+    }
+
+    return res.json({ message: 'Health metrics saved successfully.' });
+  } catch (error) {
+    console.error('Error saving health metrics:', error);
+    return res.status(500).json({ message: 'Internal server error.', error: error.message });
+  }
+});
+
 /**
  * Aggregates Health Connect data arrays into daily buckets.
- * Returns a map of  dateStr -> { steps, heartRateAvg, heartRateMin, heartRateMax, caloriesBurnt, distanceMeters, sleepDurationMinutes, sleepStages }
  */
 function aggregateByDay(healthData) {
   const dayMap = {};
@@ -18,6 +130,7 @@ function aggregateByDay(healthData) {
       dayMap[dateStr] = {
         steps: 0,
         heartRates: [],
+        spo2Readings: [],
         caloriesBurnt: 0,
         distanceMeters: 0,
         sleepDurationMinutes: 0,
@@ -27,17 +140,14 @@ function aggregateByDay(healthData) {
     return dayMap[dateStr];
   };
 
-  const toDateStr = (isoTime) => isoTime?.slice(0, 10); // "YYYY-MM-DD"
+  const toDateStr = (isoTime) => isoTime?.slice(0, 10);
 
-  // Steps
   (healthData.Steps || []).forEach((r) => {
     const d = toDateStr(r.startTime);
     if (!d) return;
-    const day = ensureDay(d);
-    day.steps += r.count || 0;
+    ensureDay(d).steps += r.count || 0;
   });
 
-  // HeartRate
   (healthData.HeartRate || []).forEach((r) => {
     const d = toDateStr(r.startTime);
     if (!d) return;
@@ -47,32 +157,28 @@ function aggregateByDay(healthData) {
     });
   });
 
-  // Active Calories
+  (healthData.OxygenSaturation || []).forEach((r) => {
+    const d = toDateStr(r.time || r.startTime);
+    if (!d) return;
+    const day = ensureDay(d);
+    const val = typeof r.percentage === 'number' ? r.percentage : r.percentage?.value;
+    if (val != null && !isNaN(val)) {
+      day.spo2Readings.push(val);
+    }
+  });
+
   (healthData.ActiveCaloriesBurned || []).forEach((r) => {
     const d = toDateStr(r.startTime);
     if (!d) return;
-    const day = ensureDay(d);
-    day.caloriesBurnt += r.energy?.inKilocalories || 0;
+    ensureDay(d).caloriesBurnt += r.energy?.inKilocalories || 0;
   });
 
-  // Total Calories (fallback if active not present)
-  (healthData.TotalCaloriesBurned || []).forEach((r) => {
-    const d = toDateStr(r.startTime);
-    if (!d) return;
-    const day = ensureDay(d);
-    // Only add if no active calories recorded for that day
-    // (to avoid double counting — we'll handle this below)
-  });
-
-  // Distance
   (healthData.Distance || []).forEach((r) => {
     const d = toDateStr(r.startTime);
     if (!d) return;
-    const day = ensureDay(d);
-    day.distanceMeters += r.distance?.inMeters || 0;
+    ensureDay(d).distanceMeters += r.distance?.inMeters || 0;
   });
 
-  // Sleep
   (healthData.SleepSession || []).forEach((r) => {
     const d = toDateStr(r.startTime);
     if (!d) return;
@@ -87,15 +193,16 @@ function aggregateByDay(healthData) {
     }
   });
 
-  // Finalize — convert heartRates array to avg/min/max
   const result = {};
   for (const [date, d] of Object.entries(dayMap)) {
     const hrs = d.heartRates;
+    const spo2s = d.spo2Readings;
     result[date] = {
       steps: d.steps || null,
       heartRateAvg: hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : null,
       heartRateMin: hrs.length ? Math.min(...hrs) : null,
       heartRateMax: hrs.length ? Math.max(...hrs) : null,
+      spo2Percentage: spo2s.length ? parseFloat((spo2s.reduce((a, b) => a + b, 0) / spo2s.length).toFixed(2)) : null,
       caloriesBurnt: d.caloriesBurnt || null,
       distanceMeters: d.distanceMeters || null,
       sleepDurationMinutes: d.sleepDurationMinutes || null,
@@ -108,9 +215,6 @@ function aggregateByDay(healthData) {
 
 /**
  * POST /api/health/sync
- * Headers: Authorization: Bearer <token>
- * Body: { healthData: { Steps: [...], HeartRate: [...], ... } }
- * Returns: { synced: number, message: string }
  */
 router.post('/sync', authenticateToken, async (req, res) => {
   try {
@@ -133,7 +237,6 @@ router.post('/sync', authenticateToken, async (req, res) => {
     for (const metricDate of dates) {
       const d = dailyData[metricDate];
 
-      // Check if a record already exists for this patient+date
       const existing = await db
         .select({ id: healthMetrics.id })
         .from(healthMetrics)
@@ -146,7 +249,6 @@ router.post('/sync', authenticateToken, async (req, res) => {
         .limit(1);
 
       if (existing.length > 0) {
-        // Update existing record
         await db
           .update(healthMetrics)
           .set({
@@ -154,6 +256,7 @@ router.post('/sync', authenticateToken, async (req, res) => {
             heartRateAvg: d.heartRateAvg,
             heartRateMin: d.heartRateMin,
             heartRateMax: d.heartRateMax,
+            spo2Percentage: d.spo2Percentage?.toFixed(2),
             caloriesBurnt: d.caloriesBurnt?.toFixed(2),
             distanceMeters: d.distanceMeters?.toFixed(2),
             sleepDurationMinutes: d.sleepDurationMinutes,
@@ -168,13 +271,13 @@ router.post('/sync', authenticateToken, async (req, res) => {
             )
           );
       } else {
-        // Insert new record
         await db.insert(healthMetrics).values({
           patientId,
           steps: d.steps,
           heartRateAvg: d.heartRateAvg,
           heartRateMin: d.heartRateMin,
           heartRateMax: d.heartRateMax,
+          spo2Percentage: d.spo2Percentage?.toFixed(2),
           caloriesBurnt: d.caloriesBurnt?.toFixed(2),
           distanceMeters: d.distanceMeters?.toFixed(2),
           sleepDurationMinutes: d.sleepDurationMinutes,

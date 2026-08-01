@@ -224,52 +224,10 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-
-          {/* Doctor view switcher */}
-          {role === "DOCTOR" && (
-            <div className="relative z-10 flex p-1.5 bg-[#FAF6E8]/10 border border-white/10 rounded-2xl w-full md:w-auto backdrop-blur-xs">
-              <button
-                onClick={() => setDoctorView("personal")}
-                className={`flex-1 md:flex-initial px-5 py-2.5 rounded-xl font-sans text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  doctorView === "personal"
-                    ? "bg-[#FAF6E8] text-[#1C1B18] shadow-xs"
-                    : "text-white/80 hover:text-white"
-                }`}
-              >
-                <MaterialIcon name="person" className="text-sm" />
-                <span>My Dashboard</span>
-              </button>
-              <button
-                onClick={() => setDoctorView("patients")}
-                className={`flex-1 md:flex-initial px-5 py-2.5 rounded-xl font-sans text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  doctorView === "patients"
-                    ? "bg-[#FAF6E8] text-[#1C1B18] shadow-xs"
-                    : "text-white/80 hover:text-white"
-                }`}
-              >
-                <MaterialIcon name="groups" className="text-sm" />
-                <span>Patients Directory</span>
-              </button>
-            </div>
-          )}
         </section>
 
-        {/* Dynamic section loading */}
-        {role === "DOCTOR" && doctorView === "patients" ? (
-          // Doctor View: Patients Dashboard Section
-          <section className="space-y-6">
-            <div className="border-b border-[#E6E1D3] pb-2">
-              <h3 className="font-serif text-2xl font-bold text-[#1C1B18]">Patients Directory</h3>
-              <p className="text-xs text-[#787363] font-sans">
-                Review and monitor biological diagnostics, biometrics, and disease scans of your patients.
-              </p>
-            </div>
-            {/* Lazy load PatientsDashboard component */}
-            <PatientsDashboardWrapper />
-          </section>
-        ) : (
-          // Standard User View (or Doctor Personal View "My Dashboard")
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Standard User View */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* Left Column (2/3 width on large screens) */}
             <div className="lg:col-span-2 space-y-8">
@@ -615,7 +573,6 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-        )}
       </main>
 
       <Footer />

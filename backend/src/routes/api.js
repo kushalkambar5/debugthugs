@@ -502,7 +502,7 @@ router.post('/doctor/add-patient-metric', authenticateProxyUser, async (req, res
           heartRateAvg: heartRateAvg !== undefined ? parseInt(heartRateAvg, 10) : undefined,
           spo2Percentage: spo2Percentage !== undefined ? parseFloat(spo2Percentage).toFixed(2) : undefined,
           sleepDurationMinutes: sleepDurationMinutes !== undefined ? parseInt(sleepDurationMinutes, 10) : undefined,
-          source: 'DOCTOR',
+          source: 'MANUAL',
           syncedAt: new Date(),
         })
         .where(and(eq(healthMetrics.patientId, patientId), eq(healthMetrics.metricDate, metricDate)));
@@ -514,7 +514,7 @@ router.post('/doctor/add-patient-metric', authenticateProxyUser, async (req, res
         spo2Percentage: spo2Percentage !== undefined ? parseFloat(spo2Percentage).toFixed(2) : null,
         sleepDurationMinutes: sleepDurationMinutes !== undefined ? parseInt(sleepDurationMinutes, 10) : null,
         metricDate,
-        source: 'DOCTOR',
+        source: 'MANUAL',
       });
     }
 
@@ -522,6 +522,89 @@ router.post('/doctor/add-patient-metric', authenticateProxyUser, async (req, res
   } catch (error) {
     console.error('Error logging patient metric:', error);
     return res.status(500).json({ message: error.message || 'An error occurred while logging health metrics.' });
+  }
+});
+
+// ==========================================
+// 8. GET HEALTH METRICS FOR PATIENT
+// ==========================================
+router.get('/health/metrics', authenticateProxyUser, async (req, res) => {
+  try {
+    const patientId = req.user.id;
+    const metrics = await db
+      .select()
+      .from(healthMetrics)
+      .where(eq(healthMetrics.patientId, patientId))
+      .orderBy(desc(healthMetrics.metricDate));
+    return res.json(metrics);
+  } catch (error) {
+    console.error('Error fetching health metrics:', error);
+    return res.status(500).json({ message: error.message || 'An error occurred while fetching health metrics.' });
+  }
+});
+
+// ==========================================
+// 9. POST HEALTH METRICS (patient can add/update own metrics)
+// ==========================================
+router.post('/health/metrics', authenticateProxyUser, async (req, res) => {
+  try {
+    const {
+      patientId: bodyPatientId,
+      steps,
+      heartRateAvg,
+      heartRateMin,
+      heartRateMax,
+      spo2Percentage,
+      sleepDurationMinutes,
+      caloriesBurnt,
+      distanceMeters,
+      metricDate,
+      source,
+    } = req.body;
+    const patientId = bodyPatientId || req.user.id;
+    if (!patientId || !metricDate) {
+      return res.status(400).json({ message: 'Patient ID and Metric Date are required.' });
+    }
+    const existing = await db
+      .select({ id: healthMetrics.id })
+      .from(healthMetrics)
+      .where(and(eq(healthMetrics.patientId, patientId), eq(healthMetrics.metricDate, metricDate)))
+      .limit(1);
+    if (existing.length > 0) {
+      await db
+        .update(healthMetrics)
+        .set({
+          steps: steps !== undefined ? parseInt(steps, 10) : undefined,
+          heartRateAvg: heartRateAvg !== undefined ? parseInt(heartRateAvg, 10) : undefined,
+          heartRateMin: heartRateMin !== undefined ? parseInt(heartRateMin, 10) : undefined,
+          heartRateMax: heartRateMax !== undefined ? parseInt(heartRateMax, 10) : undefined,
+          spo2Percentage: spo2Percentage !== undefined ? parseFloat(spo2Percentage).toFixed(2) : undefined,
+          sleepDurationMinutes: sleepDurationMinutes !== undefined ? parseInt(sleepDurationMinutes, 10) : undefined,
+          caloriesBurnt: caloriesBurnt !== undefined ? parseFloat(caloriesBurnt) : undefined,
+          distanceMeters: distanceMeters !== undefined ? parseFloat(distanceMeters) : undefined,
+          source: source || 'MANUAL',
+          syncedAt: new Date(),
+        })
+        .where(and(eq(healthMetrics.patientId, patientId), eq(healthMetrics.metricDate, metricDate)));
+    } else {
+      await db.insert(healthMetrics).values({
+        patientId,
+        steps: steps !== undefined ? parseInt(steps, 10) : null,
+        heartRateAvg: heartRateAvg !== undefined ? parseInt(heartRateAvg, 10) : null,
+        heartRateMin: heartRateMin !== undefined ? parseInt(heartRateMin, 10) : null,
+        heartRateMax: heartRateMax !== undefined ? parseInt(heartRateMax, 10) : null,
+        spo2Percentage: spo2Percentage !== undefined ? parseFloat(spo2Percentage).toFixed(2) : null,
+        sleepDurationMinutes: sleepDurationMinutes !== undefined ? parseInt(sleepDurationMinutes, 10) : null,
+        caloriesBurnt: caloriesBurnt !== undefined ? parseFloat(caloriesBurnt) : null,
+        distanceMeters: distanceMeters !== undefined ? parseFloat(distanceMeters) : null,
+        metricDate,
+        source: source || 'MANUAL',
+      });
+    }
+    return res.json({ message: 'Health metric saved successfully.' });
+  } catch (error) {
+    console.error('Error saving health metric:', error);
+    return res.status(500).json({ message: error.message || 'An error occurred while saving health metrics.' });
   }
 });
 
@@ -1114,6 +1197,71 @@ router.get('/health/metrics', authenticateProxyUser, async (req, res) => {
     return res.status(500).json({ message: 'Internal server error.', error: error.message });
   }
 });
+
+// ==========================================
+// 8.7 POST / UPSERT HEALTH METRICS
+// ==========================================
+router.post('/health/metrics', authenticateProxyUser, async (req, res) => {
+  try {
+    let patientId = req.user.id;
+    if (req.user.role === 'DOCTOR' && req.body.patientId) {
+      patientId = req.body.patientId;
+    }
+
+    const {
+      steps,
+      heartRateAvg,
+      heartRateMin,
+      heartRateMax,
+      caloriesBurnt,
+      distanceMeters,
+      spo2Percentage,
+      sleepDurationMinutes,
+      metricDate,
+      source,
+    } = req.body;
+
+    const dateToUse = metricDate || new Date().toISOString().slice(0, 10);
+
+    const existing = await db
+      .select({ id: healthMetrics.id })
+      .from(healthMetrics)
+      .where(and(eq(healthMetrics.patientId, patientId), eq(healthMetrics.metricDate, dateToUse)))
+      .limit(1);
+
+    const metricPayload = {
+      patientId,
+      steps: steps !== undefined && steps !== null && steps !== '' ? parseInt(steps, 10) : null,
+      heartRateAvg: heartRateAvg !== undefined && heartRateAvg !== null && heartRateAvg !== '' ? parseInt(heartRateAvg, 10) : null,
+      heartRateMin: heartRateMin !== undefined && heartRateMin !== null && heartRateMin !== '' ? parseInt(heartRateMin, 10) : null,
+      heartRateMax: heartRateMax !== undefined && heartRateMax !== null && heartRateMax !== '' ? parseInt(heartRateMax, 10) : null,
+      caloriesBurnt: caloriesBurnt !== undefined && caloriesBurnt !== null && caloriesBurnt !== '' ? parseFloat(caloriesBurnt).toFixed(2) : null,
+      distanceMeters: distanceMeters !== undefined && distanceMeters !== null && distanceMeters !== '' ? parseFloat(distanceMeters).toFixed(2) : null,
+      spo2Percentage: spo2Percentage !== undefined && spo2Percentage !== null && spo2Percentage !== '' ? parseFloat(spo2Percentage).toFixed(2) : null,
+      sleepDurationMinutes: sleepDurationMinutes !== undefined && sleepDurationMinutes !== null && sleepDurationMinutes !== '' ? parseInt(sleepDurationMinutes, 10) : null,
+      source: source || 'MANUAL',
+      syncedAt: new Date(),
+    };
+
+    if (existing.length > 0) {
+      await db
+        .update(healthMetrics)
+        .set(metricPayload)
+        .where(and(eq(healthMetrics.patientId, patientId), eq(healthMetrics.metricDate, dateToUse)));
+    } else {
+      await db.insert(healthMetrics).values({
+        ...metricPayload,
+        metricDate: dateToUse,
+      });
+    }
+
+    return res.json({ message: 'Health metrics saved successfully.' });
+  } catch (error) {
+    console.error('Error saving health metrics:', error);
+    return res.status(500).json({ message: 'Internal server error.', error: error.message });
+  }
+});
+
 
 // ==========================================
 // 9. GET MEDICAL HISTORY

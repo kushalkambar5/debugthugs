@@ -15,7 +15,7 @@
     "react": "19.2.3",
     "react-native": "0.86.2",
     "react-native-health-connect": "^3.5.3",
-    "react-native-safe-area-context": "^5.5.2"
+    "react-native-safe-area-context": "^5.8.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

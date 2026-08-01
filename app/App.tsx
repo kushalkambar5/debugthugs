@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
   ActivityIndicator,
@@ -28,12 +29,17 @@ const PERMISSIONS = [
   { accessType: 'read', recordType: 'Steps' },
   { accessType: 'write', recordType: 'Steps' },
   { accessType: 'read', recordType: 'Distance' },
+  { accessType: 'write', recordType: 'Distance' },
   { accessType: 'read', recordType: 'ActiveCaloriesBurned' },
+  { accessType: 'write', recordType: 'ActiveCaloriesBurned' },
   { accessType: 'read', recordType: 'TotalCaloriesBurned' },
   { accessType: 'read', recordType: 'HeartRate' },
+  { accessType: 'write', recordType: 'HeartRate' },
+  { accessType: 'read', recordType: 'OxygenSaturation' },
+  { accessType: 'write', recordType: 'OxygenSaturation' },
   { accessType: 'read', recordType: 'SleepSession' },
+  { accessType: 'write', recordType: 'SleepSession' },
   { accessType: 'read', recordType: 'Weight' },
-  { accessType: 'write', recordType: 'Weight' },
   { accessType: 'read', recordType: 'Height' },
   { accessType: 'read', recordType: 'Hydration' },
   { accessType: 'read', recordType: 'Nutrition' },
@@ -64,6 +70,15 @@ function App() {
   const [fetchedData, setFetchedData] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
+  // ─── Write input state ────────────────────────────────────────────────────
+  const [heartRateInput, setHeartRateInput] = useState<string>('72');
+  const [bloodOxygenInput, setBloodOxygenInput] = useState<string>('98');
+  const [stepsInput, setStepsInput] = useState<string>('2500');
+  const [sleepDurationInput, setSleepDurationInput] = useState<string>('8');
+  const [caloriesInput, setCaloriesInput] = useState<string>('300');
+  const [distanceInput, setDistanceInput] = useState<string>('3.5');
+  const [writeLoading, setWriteLoading] = useState<string | null>(null);
 
   // ─── Restore session on startup ───────────────────────────────────────────
   useEffect(() => {
@@ -128,10 +143,9 @@ function App() {
   };
 
   // ─── Health Connect helpers ───────────────────────────────────────────────
-  const get7DaysAgoRange = () => {
+  const getAllTimeRange = () => {
     const endTime = new Date();
-    const startTime = new Date();
-    startTime.setDate(startTime.getDate() - 7);
+    const startTime = new Date('2000-01-01T00:00:00.000Z');
     return {
       operator: 'between' as const,
       startTime: startTime.toISOString(),
@@ -178,41 +192,167 @@ function App() {
     }
   };
 
-  const writeSampleSteps = async () => {
+  const writeHeartRate = async () => {
+    const bpm = parseInt(heartRateInput, 10);
+    if (isNaN(bpm) || bpm <= 0) {
+      Alert.alert('Invalid Input', 'Please enter a valid heart rate (bpm).');
+      return;
+    }
+    setWriteLoading('heartRate');
     try {
-      const startTime = new Date();
-      startTime.setMinutes(startTime.getMinutes() - 30);
+      const now = new Date();
+      const startTime = new Date(now.getTime() - 60000);
+      const result = await insertRecords([
+        {
+          recordType: 'HeartRate',
+          startTime: startTime.toISOString(),
+          endTime: now.toISOString(),
+          samples: [{ time: now.toISOString(), beatsPerMinute: bpm }],
+        },
+      ]);
+      addLog(`HeartRate inserted: ${JSON.stringify(result)}`);
+      Alert.alert('Success', `Heart rate (${bpm} bpm) written!`);
+    } catch (error: any) {
+      addLog(`Error inserting HeartRate: ${error.message}`);
+      Alert.alert('Insert Error', error.message);
+    } finally {
+      setWriteLoading(null);
+    }
+  };
+
+  const writeBloodOxygen = async () => {
+    const spo2 = parseFloat(bloodOxygenInput);
+    if (isNaN(spo2) || spo2 < 0 || spo2 > 100) {
+      Alert.alert('Invalid Input', 'Please enter a valid SpO2 percentage (0-100).');
+      return;
+    }
+    setWriteLoading('bloodOxygen');
+    try {
+      const result = await insertRecords([
+        {
+          recordType: 'OxygenSaturation',
+          time: new Date().toISOString(),
+          percentage: spo2,
+        },
+      ]);
+      addLog(`OxygenSaturation inserted: ${JSON.stringify(result)}`);
+      Alert.alert('Success', `Blood oxygen (${spo2}%) written!`);
+    } catch (error: any) {
+      addLog(`Error inserting OxygenSaturation: ${error.message}`);
+      Alert.alert('Insert Error', error.message);
+    } finally {
+      setWriteLoading(null);
+    }
+  };
+
+  const writeSteps = async () => {
+    const count = parseInt(stepsInput, 10);
+    if (isNaN(count) || count <= 0) {
+      Alert.alert('Invalid Input', 'Please enter a valid step count.');
+      return;
+    }
+    setWriteLoading('steps');
+    try {
       const endTime = new Date();
+      const startTime = new Date(endTime.getTime() - 30 * 60 * 1000);
       const result = await insertRecords([
         {
           recordType: 'Steps',
-          count: 2500,
+          count,
           startTime: startTime.toISOString(),
           endTime: endTime.toISOString(),
         },
       ]);
-      addLog(`Steps inserted successfully: ${JSON.stringify(result)}`);
-      Alert.alert('Success', '2500 steps inserted!');
+      addLog(`Steps inserted: ${JSON.stringify(result)}`);
+      Alert.alert('Success', `${count} steps written!`);
     } catch (error: any) {
-      addLog(`Error inserting steps: ${error.message}`);
+      addLog(`Error inserting Steps: ${error.message}`);
       Alert.alert('Insert Error', error.message);
+    } finally {
+      setWriteLoading(null);
     }
   };
 
-  const writeSampleWeight = async () => {
+  const writeSleepDuration = async () => {
+    const hours = parseFloat(sleepDurationInput);
+    if (isNaN(hours) || hours <= 0) {
+      Alert.alert('Invalid Input', 'Please enter a valid sleep duration in hours.');
+      return;
+    }
+    setWriteLoading('sleep');
     try {
+      const endTime = new Date();
+      const startTime = new Date(endTime.getTime() - hours * 60 * 60 * 1000);
       const result = await insertRecords([
         {
-          recordType: 'Weight',
-          weight: { value: 76.2, unit: 'kilograms' },
-          time: new Date().toISOString(),
+          recordType: 'SleepSession',
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
         },
       ]);
-      addLog(`Weight inserted successfully: ${JSON.stringify(result)}`);
-      Alert.alert('Success', 'Weight (76.2 kg) inserted!');
+      addLog(`SleepSession inserted: ${JSON.stringify(result)}`);
+      Alert.alert('Success', `Sleep session (${hours} hrs) written!`);
     } catch (error: any) {
-      addLog(`Error inserting weight: ${error.message}`);
+      addLog(`Error inserting SleepSession: ${error.message}`);
       Alert.alert('Insert Error', error.message);
+    } finally {
+      setWriteLoading(null);
+    }
+  };
+
+  const writeCaloriesBurned = async () => {
+    const kcal = parseFloat(caloriesInput);
+    if (isNaN(kcal) || kcal <= 0) {
+      Alert.alert('Invalid Input', 'Please enter a valid calorie amount.');
+      return;
+    }
+    setWriteLoading('calories');
+    try {
+      const endTime = new Date();
+      const startTime = new Date(endTime.getTime() - 30 * 60 * 1000);
+      const result = await insertRecords([
+        {
+          recordType: 'ActiveCaloriesBurned',
+          energy: { value: kcal, unit: 'kilocalories' },
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+        },
+      ]);
+      addLog(`ActiveCaloriesBurned inserted: ${JSON.stringify(result)}`);
+      Alert.alert('Success', `${kcal} kcal burned written!`);
+    } catch (error: any) {
+      addLog(`Error inserting ActiveCaloriesBurned: ${error.message}`);
+      Alert.alert('Insert Error', error.message);
+    } finally {
+      setWriteLoading(null);
+    }
+  };
+
+  const writeDistanceCovered = async () => {
+    const km = parseFloat(distanceInput);
+    if (isNaN(km) || km <= 0) {
+      Alert.alert('Invalid Input', 'Please enter a valid distance in km.');
+      return;
+    }
+    setWriteLoading('distance');
+    try {
+      const endTime = new Date();
+      const startTime = new Date(endTime.getTime() - 30 * 60 * 1000);
+      const result = await insertRecords([
+        {
+          recordType: 'Distance',
+          distance: { value: km * 1000, unit: 'meters' },
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+        },
+      ]);
+      addLog(`Distance inserted: ${JSON.stringify(result)}`);
+      Alert.alert('Success', `${km} km distance written!`);
+    } catch (error: any) {
+      addLog(`Error inserting Distance: ${error.message}`);
+      Alert.alert('Insert Error', error.message);
+    } finally {
+      setWriteLoading(null);
     }
   };
 
@@ -269,9 +409,9 @@ function App() {
       return;
     }
     setIsLoading(true);
-    addLog('Fetching last 7 days of health data...');
+    addLog('Fetching all historical health data...');
     const data: Record<string, any> = {};
-    const range = get7DaysAgoRange();
+    const range = getAllTimeRange();
     const startTime = new Date(range.startTime);
     const endTime = new Date(range.endTime);
 
@@ -281,6 +421,7 @@ function App() {
       'ActiveCaloriesBurned',
       'TotalCaloriesBurned',
       'HeartRate',
+      'OxygenSaturation',
       'SleepSession',
       'Weight',
       'Height',
@@ -363,7 +504,8 @@ function App() {
 
   // ─── Main App ─────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#121212" />
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -416,16 +558,159 @@ function App() {
 
         {/* Write sample data section */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Write Sample Data (Testing)</Text>
-          <Text style={styles.cardSub}>Insert mock values to see reading functionality in action</Text>
-          <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.buttonGreen} onPress={writeSampleSteps}>
-              <Text style={styles.buttonText}>Write Steps (2500)</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.buttonGreen} onPress={writeSampleWeight}>
-              <Text style={styles.buttonText}>Write Weight (76.2 kg)</Text>
-            </TouchableOpacity>
+          <Text style={styles.cardTitle}>Write Health Data</Text>
+          <Text style={styles.cardSub}>Enter values and write directly to Health Connect</Text>
+
+          {/* Heart Rate */}
+          <View style={styles.writeRow}>
+            <Text style={styles.writeLabel}>❤️ Heart Rate (bpm)</Text>
+            <View style={styles.writeInputRow}>
+              <TextInput
+                style={styles.writeInput}
+                value={heartRateInput}
+                onChangeText={setHeartRateInput}
+                keyboardType="numeric"
+                placeholder="e.g. 72"
+                placeholderTextColor="#555"
+              />
+              <TouchableOpacity
+                style={[styles.buttonGreen, styles.writeButton]}
+                onPress={writeHeartRate}
+                disabled={writeLoading === 'heartRate'}>
+                {writeLoading === 'heartRate' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Write</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
+
+          {/* Blood Oxygen */}
+          <View style={styles.writeRow}>
+            <Text style={styles.writeLabel}>🫁 Blood Oxygen (%)</Text>
+            <View style={styles.writeInputRow}>
+              <TextInput
+                style={styles.writeInput}
+                value={bloodOxygenInput}
+                onChangeText={setBloodOxygenInput}
+                keyboardType="numeric"
+                placeholder="e.g. 98"
+                placeholderTextColor="#555"
+              />
+              <TouchableOpacity
+                style={[styles.buttonGreen, styles.writeButton]}
+                onPress={writeBloodOxygen}
+                disabled={writeLoading === 'bloodOxygen'}>
+                {writeLoading === 'bloodOxygen' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Write</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Daily Steps */}
+          <View style={styles.writeRow}>
+            <Text style={styles.writeLabel}>🚶 Daily Steps</Text>
+            <View style={styles.writeInputRow}>
+              <TextInput
+                style={styles.writeInput}
+                value={stepsInput}
+                onChangeText={setStepsInput}
+                keyboardType="numeric"
+                placeholder="e.g. 2500"
+                placeholderTextColor="#555"
+              />
+              <TouchableOpacity
+                style={[styles.buttonGreen, styles.writeButton]}
+                onPress={writeSteps}
+                disabled={writeLoading === 'steps'}>
+                {writeLoading === 'steps' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Write</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Sleep Duration */}
+          <View style={styles.writeRow}>
+            <Text style={styles.writeLabel}>😴 Sleep Duration (hrs)</Text>
+            <View style={styles.writeInputRow}>
+              <TextInput
+                style={styles.writeInput}
+                value={sleepDurationInput}
+                onChangeText={setSleepDurationInput}
+                keyboardType="numeric"
+                placeholder="e.g. 8"
+                placeholderTextColor="#555"
+              />
+              <TouchableOpacity
+                style={[styles.buttonGreen, styles.writeButton]}
+                onPress={writeSleepDuration}
+                disabled={writeLoading === 'sleep'}>
+                {writeLoading === 'sleep' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Write</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Calories Burned */}
+          <View style={styles.writeRow}>
+            <Text style={styles.writeLabel}>🔥 Calories Burned (kcal)</Text>
+            <View style={styles.writeInputRow}>
+              <TextInput
+                style={styles.writeInput}
+                value={caloriesInput}
+                onChangeText={setCaloriesInput}
+                keyboardType="numeric"
+                placeholder="e.g. 300"
+                placeholderTextColor="#555"
+              />
+              <TouchableOpacity
+                style={[styles.buttonGreen, styles.writeButton]}
+                onPress={writeCaloriesBurned}
+                disabled={writeLoading === 'calories'}>
+                {writeLoading === 'calories' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Write</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Distance Covered */}
+          <View style={styles.writeRow}>
+            <Text style={styles.writeLabel}>📍 Distance Covered (km)</Text>
+            <View style={styles.writeInputRow}>
+              <TextInput
+                style={styles.writeInput}
+                value={distanceInput}
+                onChangeText={setDistanceInput}
+                keyboardType="numeric"
+                placeholder="e.g. 3.5"
+                placeholderTextColor="#555"
+              />
+              <TouchableOpacity
+                style={[styles.buttonGreen, styles.writeButton]}
+                onPress={writeDistanceCovered}
+                disabled={writeLoading === 'distance'}>
+                {writeLoading === 'distance' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Write</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
         </View>
 
         {/* Fetch + Sync actions */}
@@ -433,7 +718,7 @@ function App() {
           {isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.buttonFetchText}>📊 Fetch Last 7 Days Data</Text>
+            <Text style={styles.buttonFetchText}>📊 Fetch All Health Data</Text>
           )}
         </TouchableOpacity>
 
@@ -455,7 +740,7 @@ function App() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Fetched Health Records</Text>
           {Object.keys(fetchedData).length === 0 ? (
-            <Text style={styles.noDataText}>No data fetched yet. Tap "Fetch Last 7 Days Data" above.</Text>
+            <Text style={styles.noDataText}>No data fetched yet. Tap "Fetch All Health Data" above.</Text>
           ) : (
             Object.entries(fetchedData).map(([type, records]) => {
               const isError = records && typeof records === 'object' && 'error' in records;
@@ -499,6 +784,7 @@ function App() {
         </View>
       </ScrollView>
     </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
@@ -662,6 +948,40 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 6,
     alignItems: 'center',
+  },
+  // ── Write Data Rows ──
+  writeRow: {
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#2b2b2b',
+    paddingTop: 12,
+  },
+  writeLabel: {
+    color: '#cccccc',
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  writeInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  writeInput: {
+    flex: 1,
+    backgroundColor: '#2a2a2a',
+    borderWidth: 1,
+    borderColor: '#3a3a3a',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    color: '#ffffff',
+    fontSize: 14,
+  },
+  writeButton: {
+    flex: 0,
+    paddingHorizontal: 16,
+    minWidth: 70,
   },
   buttonText: {
     color: '#ffffff',

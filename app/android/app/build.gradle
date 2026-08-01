@@ -8,7 +8,7 @@ apply plugin: "com.facebook.react"
  */
 react {
     /* Enable offline JS bundle in Debug builds */
-    bundleInDebug = true
+    // bundleInDebug = true
 
     /* Autolinking */
     autolinkLibrariesWithApp()
