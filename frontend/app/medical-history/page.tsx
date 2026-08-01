@@ -18,7 +18,7 @@ interface DiseaseScan {
   aiExplanation: string | null;
   aiSuggestions: string[] | null;
   medicines: string[] | null;
-  affectedParts: string[] | null;
+  affectedParts: number[] | null;
   createdAt: string;
   completedAt: string | null;
 }
@@ -56,6 +56,22 @@ const SCAN_COLOR: Record<string, { bg: string; text: string; border: string }> =
   HEART: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200" },
   SKIN: { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-200" },
   CHEST: { bg: "bg-sky-50", text: "text-sky-700", border: "border-sky-200" },
+};
+
+const STAGE_NAME_MAP: Record<number, string> = {
+  1: "Skeleton Structure",
+  2: "Circulatory System",
+  3: "Urinary System",
+  4: "Digestive System",
+  5: "Gallbladder",
+  6: "Liver",
+  7: "Diaphragm",
+  8: "Heart",
+  9: "Lungs",
+  10: "Brain",
+  11: "Eyes",
+  12: "Muscular System",
+  13: "Full Body (Skin)",
 };
 
 const REPORT_TYPE_ICON: Record<string, string> = {
@@ -98,6 +114,347 @@ function getDiagnosis(pr: any, scanType: string) {
     (pr.tumor_found ? "Tumor Detected" : undefined) ||
     (pr.risk_prediction === 1 ? "High Risk" : pr.risk_prediction === 0 ? "Low Risk" : undefined) ||
     null
+  );
+}
+
+function PredictionResultDetails({ scan }: { scan: DiseaseScan }) {
+  const pr = scan.predictionResult;
+  const scanType = scan.scanType;
+  const [showRaw, setShowRaw] = useState(false);
+
+  if (!pr) return null;
+
+  const renderContent = () => {
+    switch (scanType) {
+      case "BONE_FRACTURE": {
+        const diagnosis = pr.diagnosis || "Unknown";
+        const confidence = pr.confidence !== undefined ? pr.confidence : null;
+        const isFractured = diagnosis.toLowerCase() === "fractured";
+
+        return (
+          <div className="space-y-3">
+            <div className={`p-3.5 rounded-xl border flex items-center gap-3 ${
+              isFractured 
+                ? "bg-red-50/60 border-red-200 text-red-800" 
+                : "bg-emerald-50/60 border-emerald-200 text-emerald-800"
+            }`}>
+              <span className="material-symbols-outlined text-xl shrink-0">
+                {isFractured ? "warning" : "check_circle"}
+              </span>
+              <div>
+                <p className="font-serif text-sm font-bold capitalize">
+                  {diagnosis} Detected
+                </p>
+                <p className="text-[10px] text-gray-500 font-sans mt-0.5">
+                  AI Model analysis indicates a {isFractured ? "fractured bone structure" : "normal bone structure"}.
+                </p>
+              </div>
+            </div>
+
+            {confidence !== null && (
+              <div className="bg-white border border-[#E6E1D3]/60 rounded-xl p-3 space-y-1.5 shadow-sm">
+                <div className="flex justify-between items-center text-[10px] font-semibold text-[#4D493E]">
+                  <span>Model Confidence</span>
+                  <span className="text-[#8C6B1F] font-bold">{confidence}%</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      isFractured ? "bg-red-500" : "bg-emerald-500"
+                    }`}
+                    style={{ width: `${confidence}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      case "BRAIN_TUMOR": {
+        const detections = pr.detections || [];
+        const tumorFound = pr.tumor_found || detections.length > 0;
+
+        return (
+          <div className="space-y-3">
+            <div className={`p-3.5 rounded-xl border flex items-center gap-3 ${
+              tumorFound 
+                ? "bg-red-50/60 border-red-200 text-red-800" 
+                : "bg-emerald-50/60 border-emerald-200 text-emerald-800"
+            }`}>
+              <span className="material-symbols-outlined text-xl shrink-0">
+                {tumorFound ? "warning" : "check_circle"}
+              </span>
+              <div>
+                <p className="font-serif text-sm font-bold">
+                  {tumorFound ? "Tumor Detected" : "No Tumor Found"}
+                </p>
+                <p className="text-[10px] text-gray-500 font-sans mt-0.5">
+                  {tumorFound 
+                    ? `AI Model identified ${detections.length} anomaly area(s).` 
+                    : "No tumor-like anomalous formations were identified by the AI model."}
+                </p>
+              </div>
+            </div>
+
+            {detections.length > 0 && (
+              <div className="space-y-2">
+                <span className="block text-[9px] font-bold uppercase tracking-wider text-[#787363] font-sans">
+                  Detected Regions ({detections.length})
+                </span>
+                <div className="grid grid-cols-1 gap-2">
+                  {detections.map((d: any, i: number) => {
+                    const cls = d.class || "anomaly";
+                    const conf = d.confidence || 0;
+                    const bbox = d.bbox || [];
+                    
+                    return (
+                      <div key={i} className="bg-white border border-[#E6E1D3]/60 rounded-xl p-3 space-y-2 shadow-sm">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-[#1C1B18] capitalize flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                            {cls === "cake" ? "Tumor" : cls}
+                          </span>
+                          <span className="text-[10px] font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
+                            {conf}% confidence
+                          </span>
+                        </div>
+                        {bbox.length === 4 && (
+                          <div className="pt-1.5 border-t border-gray-50 flex items-center justify-between text-[9px] text-[#787363] font-mono">
+                            <span>Bounding Box:</span>
+                            <span>
+                              [{Math.round(bbox[0])}, {Math.round(bbox[1])}] to [{Math.round(bbox[2])}, {Math.round(bbox[3])}]
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      case "ECG": {
+        const diagnosis = pr.diagnosis || "Unknown Rhythm";
+        const confidence = pr.confidence !== undefined ? pr.confidence : null;
+        const isNormal = diagnosis.toLowerCase().includes("normal");
+
+        return (
+          <div className="space-y-3">
+            <div className={`p-3.5 rounded-xl border flex items-center gap-3 ${
+              isNormal 
+                ? "bg-emerald-50/60 border-emerald-200 text-emerald-800" 
+                : "bg-amber-50/60 border-amber-200 text-amber-800"
+            }`}>
+              <span className="material-symbols-outlined text-xl shrink-0 animate-pulse text-red-600">
+                pulse
+              </span>
+              <div>
+                <p className="font-serif text-sm font-bold">
+                  {diagnosis}
+                </p>
+                <p className="text-[10px] text-gray-500 font-sans mt-0.5">
+                  {isNormal 
+                    ? "Normal heart rhythm activity detected." 
+                    : "Anomalous electrocardiogram rhythm detected. Review by a cardiologist recommended."}
+                </p>
+              </div>
+            </div>
+
+            {confidence !== null && (
+              <div className="bg-white border border-[#E6E1D3]/60 rounded-xl p-3 space-y-1.5 shadow-sm">
+                <div className="flex justify-between items-center text-[10px] font-semibold text-[#4D493E]">
+                  <span>Model Confidence</span>
+                  <span className="text-[#8C6B1F] font-bold">{confidence}%</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      isNormal ? "bg-emerald-500" : "bg-amber-500"
+                    }`}
+                    style={{ width: `${confidence}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      case "HEART": {
+        const prob = pr.disease_probability !== undefined ? pr.disease_probability : null;
+        const risk = pr.risk_prediction !== undefined ? pr.risk_prediction : null;
+        const diagnosis = pr.diagnosis || (risk === 1 ? "High Risk" : "Low Risk");
+        const isHigh = risk === 1;
+
+        return (
+          <div className="space-y-3">
+            <div className={`p-3.5 rounded-xl border flex items-center gap-3 ${
+              isHigh 
+                ? "bg-red-50/60 border-red-200 text-red-800" 
+                : "bg-emerald-50/60 border-emerald-200 text-emerald-800"
+            }`}>
+              <span className="material-symbols-outlined text-xl shrink-0">
+                {isHigh ? "heart_broken" : "favorite"}
+              </span>
+              <div>
+                <p className="font-serif text-sm font-bold">
+                  {diagnosis} Cardiovascular Profile
+                </p>
+                <p className="text-[10px] text-gray-500 font-sans mt-0.5">
+                  {isHigh 
+                    ? "XGBoost model identifies elevated markers indicating cardiovascular disease risk factors." 
+                    : "Low level of risk factors detected across inputs."}
+                </p>
+              </div>
+            </div>
+
+            {prob !== null && (
+              <div className="bg-white border border-[#E6E1D3]/60 rounded-xl p-3 space-y-1.5 shadow-sm">
+                <div className="flex justify-between items-center text-[10px] font-semibold text-[#4D493E]">
+                  <span>Disease Probability</span>
+                  <span className={`font-bold ${isHigh ? "text-red-600" : "text-emerald-600"}`}>
+                    {prob}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      isHigh ? "bg-red-500" : "bg-emerald-500"
+                    }`}
+                    style={{ width: `${prob}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      case "SKIN": {
+        const diagnosis = pr.diagnosis || "Unknown";
+        const confidence = pr.confidence !== undefined ? pr.confidence : null;
+        const formattedDiagnosis = diagnosis.replace(/_/g, " ");
+        const isBenign = formattedDiagnosis.toLowerCase().includes("benign");
+
+        return (
+          <div className="space-y-3">
+            <div className={`p-3.5 rounded-xl border flex items-center gap-3 ${
+              isBenign 
+                ? "bg-emerald-50/60 border-emerald-200 text-emerald-800" 
+                : "bg-amber-50/60 border-amber-200 text-amber-800"
+            }`}>
+              <span className="material-symbols-outlined text-xl shrink-0">
+                {isBenign ? "check_circle" : "warning"}
+              </span>
+              <div>
+                <p className="font-serif text-sm font-bold capitalize">
+                  {formattedDiagnosis}
+                </p>
+                <p className="text-[10px] text-gray-500 font-sans mt-0.5">
+                  AI Model dermatological scan result.
+                </p>
+              </div>
+            </div>
+
+            {confidence !== null && (
+              <div className="bg-white border border-[#E6E1D3]/60 rounded-xl p-3 space-y-1.5 shadow-sm">
+                <div className="flex justify-between items-center text-[10px] font-semibold text-[#4D493E]">
+                  <span>Model Confidence</span>
+                  <span className="text-[#8C6B1F] font-bold">{confidence}%</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      isBenign ? "bg-emerald-500" : "bg-amber-500"
+                    }`}
+                    style={{ width: `${confidence}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      case "CHEST": {
+        const pathologies = pr.pathology_probabilities || {};
+        const sortedPathologies = Object.entries(pathologies)
+          .map(([name, val]) => ({ name, val: Number(val) }))
+          .sort((a, b) => b.val - a.val);
+
+        if (sortedPathologies.length === 0) return <p className="text-xs text-gray-400 font-sans">No pathology data found.</p>;
+
+        return (
+          <div className="space-y-3">
+            <span className="block text-[9px] font-bold uppercase tracking-wider text-[#787363] font-sans">
+              Pathology Probability Scores
+            </span>
+            <div className="bg-white border border-[#E6E1D3]/60 rounded-xl p-3.5 space-y-3 shadow-sm max-h-60 overflow-y-auto custom-scrollbar">
+              {sortedPathologies.map((path: any, index: number) => {
+                const isHigh = path.val >= 10;
+                return (
+                  <div key={index} className="space-y-1">
+                    <div className="flex justify-between items-center text-[10px] font-semibold font-sans">
+                      <span className={`${isHigh ? "text-red-700 font-bold" : "text-[#4D493E]"}`}>
+                        {path.name}
+                      </span>
+                      <span className={isHigh ? "text-red-700 font-bold" : "text-[#787363]"}>
+                        {path.val}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-1 overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isHigh ? "bg-red-500" : "bg-sky-500"
+                        }`}
+                        style={{ width: `${path.val}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      }
+
+      default:
+        return (
+          <pre className="text-[10px] font-mono bg-[#1C1B18] text-emerald-400 rounded-xl p-3 overflow-x-auto leading-relaxed">
+            {JSON.stringify(pr, null, 2)}
+          </pre>
+        );
+    }
+  };
+
+  return (
+    <div className="space-y-2 mt-2">
+      <div className="flex items-center justify-between">
+        <span className="block text-[10px] font-bold tracking-wider uppercase text-[#4D493E] font-sans">
+          Model Prediction Report
+        </span>
+        <button
+          onClick={() => setShowRaw(!showRaw)}
+          className="text-[9px] font-bold uppercase text-[#8C6B1F] hover:underline flex items-center gap-0.5 cursor-pointer bg-none border-none p-0"
+        >
+          {showRaw ? "Hide Raw JSON" : "Show Raw JSON"}
+        </button>
+      </div>
+
+      {showRaw ? (
+        <pre className="text-[10px] font-mono bg-[#1C1B18] text-emerald-400 rounded-xl p-3 overflow-x-auto leading-relaxed mt-1">
+          {JSON.stringify(pr, null, 2)}
+        </pre>
+      ) : (
+        <div className="bg-[#FAF9F5]/40 border border-[#E6E1D3]/50 rounded-2xl p-4 mt-1">
+          {renderContent()}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -216,14 +573,9 @@ function ScanCard({ scan }: { scan: DiseaseScan }) {
             </div>
           )}
 
-          {/* Raw Prediction Data */}
+          {/* Prediction Result Details */}
           {scan.predictionResult && (
-            <div>
-              <span className="block text-[10px] font-bold tracking-wider uppercase text-[#4D493E] mb-1 font-sans">Raw Prediction Data</span>
-              <pre className="text-[10px] font-mono bg-[#1C1B18] text-emerald-400 rounded-xl p-3 overflow-x-auto leading-relaxed">
-                {JSON.stringify(scan.predictionResult, null, 2)}
-              </pre>
-            </div>
+            <PredictionResultDetails scan={scan} />
           )}
         </div>
       )}
@@ -514,10 +866,17 @@ function TimelineView({ scans, reports, searchQuery }: { scans: DiseaseScan[]; r
                         {/* Tags row */}
                         <div className="flex flex-wrap gap-1 mt-2">
                           {isScan && s!.affectedParts?.slice(0, 3).map((p, pi) => (
-                            <span key={pi} className="text-[9px] font-semibold bg-white border border-purple-200 text-purple-700 px-1.5 py-0.5 rounded-full font-sans">{p}</span>
+                            <span key={pi} className="text-[9px] font-semibold bg-white border border-purple-200 text-purple-700 px-1.5 py-0.5 rounded-full font-sans">
+                              {STAGE_NAME_MAP[p] || `Part ${p}`}
+                            </span>
                           ))}
                           {isScan && s!.medicines?.slice(0, 2).map((m, mi) => (
                             <span key={mi} className="text-[9px] font-semibold bg-white border border-violet-200 text-violet-700 px-1.5 py-0.5 rounded-full font-sans">{m}</span>
+                          ))}
+                          {!isScan && r!.affectedParts?.slice(0, 3).map((p, pi) => (
+                            <span key={`p-${pi}`} className="text-[9px] font-semibold bg-white border border-purple-200 text-purple-700 px-1.5 py-0.5 rounded-full font-sans">
+                              {STAGE_NAME_MAP[p] || `Part ${p}`}
+                            </span>
                           ))}
                           {!isScan && r!.medicines?.slice(0, 3).map((m, mi) => (
                             <span key={mi} className="text-[9px] font-semibold bg-white border border-sky-200 text-sky-700 px-1.5 py-0.5 rounded-full font-sans">{m}</span>
@@ -566,7 +925,9 @@ function TimelineView({ scans, reports, searchQuery }: { scans: DiseaseScan[]; r
                           <div>
                             <span className="block text-[9px] font-bold tracking-wider uppercase text-[#4D493E] mb-1 font-sans">AI Summary</span>
                             <p className="text-[11px] text-[#4D493E] font-sans leading-relaxed">
-                              {typeof r!.aiSummary === "string" ? r!.aiSummary : JSON.stringify(r!.aiSummary, null, 2)}
+                              {typeof r!.aiSummary === "string"
+                                ? r!.aiSummary
+                                : r!.aiSummary.summary || JSON.stringify(r!.aiSummary, null, 2)}
                             </p>
                           </div>
                         )}

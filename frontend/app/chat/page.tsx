@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -29,16 +29,28 @@ interface PatientListItem {
   profileImageUrl: string | null;
 }
 
+interface DoctorListItem {
+  profileId: string;
+  fullName: string;
+  email: string;
+  profileImageUrl: string | null;
+  specialization: string;
+  isAssociated: boolean;
+  isActive: boolean;
+}
+
 function ChatContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
 
   const patientIdParam = searchParams.get("patientId");
+  const doctorIdParam = searchParams.get("doctorId");
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [otherUser, setOtherUser] = useState<OtherUser | null>(null);
   const [patientsList, setPatientsList] = useState<PatientListItem[]>([]);
+  const [doctorsList, setDoctorsList] = useState<DoctorListItem[]>([]);
   const [noDoctorAssigned, setNoDoctorAssigned] = useState(false);
   const [chatLoading, setChatLoading] = useState(true);
   const [sidebarLoading, setSidebarLoading] = useState(false);
@@ -47,7 +59,8 @@ function ChatContent() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const isFirstLoad = useRef(true);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -78,6 +91,29 @@ function ChatContent() {
   }, [status, session]);
 
   useEffect(() => {
+    if (status === "authenticated" && session?.user.role === "PATIENT") {
+      const fetchDoctors = async () => {
+        setSidebarLoading(true);
+        try {
+          const resp = await fetch("/api/patient/doctors");
+          if (resp.ok) {
+            const data = await resp.json();
+            const activeDocs = (data || []).filter(
+              (doc: any) => doc.isAssociated && doc.isActive
+            );
+            setDoctorsList(activeDocs);
+          }
+        } catch (err) {
+          console.error("Error loading doctors list:", err);
+        } finally {
+          setSidebarLoading(false);
+        }
+      };
+      fetchDoctors();
+    }
+  }, [status, session]);
+
+  useEffect(() => {
     if (status !== "authenticated" || !session) return;
 
     const isDoctor = session.user.role === "DOCTOR";
@@ -88,39 +124,113 @@ function ChatContent() {
       return;
     }
 
-    const fetchChat = async (isInitial = false) => {
-      if (isInitial) setChatLoading(true);
-      setError(null);
+    const fetchChat = async (isInitial = false, retryCount = 0) => {
+      if (isInitial && retryCount === 0) {
+        setChatLoading(true);
+        setError(null);
+      }
+      
+      let shouldSetLoadingFalse = isInitial;
+
       try {
         const url = isDoctor
           ? `/api/chat/doctor-patient?patientId=${patientIdParam}`
+          : doctorIdParam
+          ? `/api/chat/doctor-patient?doctorId=${doctorIdParam}`
           : "/api/chat/doctor-patient";
 
         const resp = await fetch(url);
-        if (!resp.ok) throw new Error("Failed to load chat history.");
+        if (!resp.ok) {
+          // If it's a transient network/proxy error (e.g., 502, 500) and we have retries left
+          if (resp.status !== 401 && resp.status !== 403 && retryCount < 2) {
+            shouldSetLoadingFalse = false;
+            setTimeout(() => fetchChat(isInitial, retryCount + 1), 1000);
+            return;
+          }
+
+          let errMsg = "Failed to load chat history.";
+          try {
+            const errData = await resp.json();
+            if (errData && errData.message) errMsg = errData.message;
+            else if (errData && errData.error) errMsg = errData.error;
+          } catch (e) {
+            // Ignore parse errors
+          }
+          throw new Error(errMsg);
+        }
+        
         const data = await resp.json();
 
         if (data.success === false && data.code === "NO_DOCTOR_ASSIGNED") {
           setNoDoctorAssigned(true);
+          setError(null);
         } else if (data.success) {
           setNoDoctorAssigned(false);
-          setMessages(data.messages || []);
-          setOtherUser(data.otherUser || null);
+          if (data.otherUser && !isDoctor && !doctorIdParam) {
+            router.replace(`/chat?doctorId=${data.otherUser.id}`);
+          }
+          setMessages((prev) => {
+            const next = data.messages || [];
+            if (prev.length !== next.length) {
+              return next;
+            }
+            const isDifferent = prev.some((msg, idx) => {
+              const nextMsg = next[idx];
+              return (
+                msg.senderId !== nextMsg.senderId ||
+                msg.text !== nextMsg.text ||
+                msg.timestamp !== nextMsg.timestamp
+              );
+            });
+            return isDifferent ? next : prev;
+          });
+          setOtherUser((prev) => {
+            const next = data.otherUser || null;
+            if (!prev && !next) return null;
+            if (!prev || !next) return next;
+            if (
+              prev.id !== next.id ||
+              prev.name !== next.name ||
+              prev.avatar !== next.avatar ||
+              prev.role !== next.role ||
+              prev.specialization !== next.specialization
+            ) {
+              return next;
+            }
+            return prev;
+          });
+          setError(null);
         }
       } catch (err: any) {
         if (isInitial) setError(err.message || "An error occurred.");
       } finally {
-        if (isInitial) setChatLoading(false);
+        if (shouldSetLoadingFalse) {
+          setChatLoading(false);
+        }
       }
     };
 
     fetchChat(true);
     const interval = setInterval(() => fetchChat(false), 3000);
     return () => clearInterval(interval);
-  }, [status, session, patientIdParam]);
+  }, [status, session, patientIdParam, doctorIdParam, router]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    isFirstLoad.current = true;
+  }, [patientIdParam, doctorIdParam]);
+
+  useEffect(() => {
+    if (messagesContainerRef.current) {
+      if (isFirstLoad.current && messages.length > 0) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        isFirstLoad.current = false;
+      } else {
+        messagesContainerRef.current.scrollTo({
+          top: messagesContainerRef.current.scrollHeight,
+          behavior: "smooth",
+        });
+      }
+    }
   }, [messages]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -135,6 +245,7 @@ function ChatContent() {
       const isDoctor = session?.user.role === "DOCTOR";
       const payload: any = { text: textToSend };
       if (isDoctor && patientIdParam) payload.patientId = patientIdParam;
+      if (!isDoctor && doctorIdParam) payload.doctorId = doctorIdParam;
 
       const resp = await fetch("/api/chat/doctor-patient", {
         method: "POST",
@@ -177,6 +288,13 @@ function ChatContent() {
       p.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filteredDoctors = doctorsList.filter(
+    (d) =>
+      d.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      d.specialization.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      d.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="min-h-screen flex flex-col bg-[#F6F4EF] text-[#1C1B18] font-sans">
       <HeaderNav />
@@ -210,37 +328,37 @@ function ChatContent() {
           className="flex-1 bg-white border border-[#E6E1D3] rounded-[32px] overflow-hidden flex shadow-xs"
           style={{ minHeight: "560px", maxHeight: "680px" }}
         >
-          {/* LEFT SIDEBAR — DOCTOR ONLY */}
-          {isDoctor && (
-            <div className="w-72 border-r border-[#E6E1D3] flex flex-col bg-[#FAF9F5] shrink-0">
-              <div className="p-4 border-b border-[#E6E1D3] bg-white">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#787363] mb-2">
-                  My Patients ({patientsList.length})
-                </p>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-[#787363]">
-                    <MaterialIcon name="search" className="text-sm" />
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="Search patients..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 bg-[#FAF6E8] border border-[#E6E1D3] rounded-xl text-[10px] font-semibold placeholder-[#A8A28E] focus:outline-none focus:ring-2 focus:ring-[#8C6B1F]/20"
-                  />
-                </div>
+          {/* LEFT SIDEBAR — DOCTOR OR PATIENT */}
+          <div className="w-72 border-r border-[#E6E1D3] flex flex-col bg-[#FAF9F5] shrink-0">
+            <div className="p-4 border-b border-[#E6E1D3] bg-white">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#787363] mb-2">
+                {isDoctor ? `My Patients (${patientsList.length})` : `My Doctors (${doctorsList.length})`}
+              </p>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-[#787363]">
+                  <MaterialIcon name="search" className="text-sm" />
+                </span>
+                <input
+                  type="text"
+                  placeholder={isDoctor ? "Search patients..." : "Search doctors..."}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-2 bg-[#FAF6E8] border border-[#E6E1D3] rounded-xl text-[10px] font-semibold placeholder-[#A8A28E] focus:outline-none focus:ring-2 focus:ring-[#8C6B1F]/20"
+                />
               </div>
+            </div>
 
-              <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                {sidebarLoading ? (
-                  <div className="py-12 flex flex-col items-center justify-center gap-2">
-                    <svg className="animate-spin h-5 w-5 text-[#8C6B1F]" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    <span className="text-[9px] text-[#787363]">Loading roster...</span>
-                  </div>
-                ) : filteredPatients.length === 0 ? (
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {sidebarLoading ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5 text-[#8C6B1F]" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span className="text-[9px] text-[#787363]">Loading roster...</span>
+                </div>
+              ) : isDoctor ? (
+                filteredPatients.length === 0 ? (
                   <div className="py-10 text-center text-[10px] text-[#787363]">
                     {searchQuery ? "No patients match your search." : "No patients currently assigned."}
                   </div>
@@ -259,7 +377,7 @@ function ChatContent() {
                       >
                         <div className="relative w-9 h-9 rounded-full overflow-hidden bg-white border border-[#E6E1D3] shrink-0">
                           <img
-                            src={patient.profileImageUrl || "/avatars/avatar1.png"}
+                            src={patient.profileImageUrl || "/avatars/avatar1.svg"}
                             alt={patient.fullName}
                             className="w-full h-full object-cover"
                           />
@@ -276,10 +394,48 @@ function ChatContent() {
                       </button>
                     );
                   })
-                )}
-              </div>
+                )
+              ) : (
+                filteredDoctors.length === 0 ? (
+                  <div className="py-10 text-center text-[10px] text-[#787363]">
+                    {searchQuery ? "No doctors match your search." : "No doctors currently assigned."}
+                  </div>
+                ) : (
+                  filteredDoctors.map((doc) => {
+                    const isSelected = doc.profileId === doctorIdParam;
+                    return (
+                      <button
+                        key={doc.profileId}
+                        onClick={() => router.push(`/chat?doctorId=${doc.profileId}`)}
+                        className={`w-full flex items-center gap-3 p-3 rounded-2xl text-left transition-all border cursor-pointer group ${
+                          isSelected
+                            ? "bg-[#FAF6E8] border-[#8C6B1F]/30 shadow-inner"
+                            : "bg-transparent border-transparent hover:bg-[#FAF6E8]/60 hover:border-[#E6E1D3]"
+                        }`}
+                      >
+                        <div className="relative w-9 h-9 rounded-full overflow-hidden bg-white border border-[#E6E1D3] shrink-0">
+                          <img
+                            src={doc.profileImageUrl || "/avatars/avatar2.svg"}
+                            alt={doc.fullName}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className={`block text-[11px] font-bold truncate ${isSelected ? "text-[#8C6B1F]" : "text-[#4D493E] group-hover:text-[#1C1B18]"}`}>
+                            Dr. {doc.fullName}
+                          </span>
+                          <span className="block text-[9px] text-[#A8A28E] truncate">{doc.specialization}</span>
+                        </div>
+                        {isSelected && (
+                          <MaterialIcon name="chevron_right" className="text-sm text-[#8C6B1F] shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })
+                )
+              )}
             </div>
-          )}
+          </div>
 
           {/* MAIN CHAT PANE */}
           <div className="flex-1 flex flex-col min-w-0">
@@ -330,7 +486,7 @@ function ChatContent() {
                   <div className="flex items-center gap-3">
                     <div className="relative w-10 h-10 rounded-full overflow-hidden bg-white border border-[#E6E1D3] shrink-0 shadow-xs">
                       <img
-                        src={otherUser?.avatar || "/avatars/avatar1.png"}
+                        src={otherUser?.avatar || "/avatars/avatar1.svg"}
                         alt={otherUser?.name || "User"}
                         className="w-full h-full object-cover"
                       />
@@ -357,7 +513,10 @@ function ChatContent() {
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-[#FAFAF9]">
+                <div
+                  ref={messagesContainerRef}
+                  className="flex-1 overflow-y-auto p-6 space-y-5 bg-[#FAFAF9]"
+                >
                   {messages.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-center text-[#787363] py-10">
                       <div className="w-14 h-14 rounded-full bg-[#FAF6E8] border border-[#E6E1D3] flex items-center justify-center mb-3">
@@ -419,7 +578,6 @@ function ChatContent() {
                       );
                     })
                   )}
-                  <div ref={messagesEndRef} />
                 </div>
 
                 {/* Input */}

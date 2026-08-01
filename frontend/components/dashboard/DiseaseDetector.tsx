@@ -22,8 +22,24 @@ interface PredictionResult {
   ai_explanation?: string;
   ai_suggestions?: string[];
   medicines?: string[];
-  affected_parts?: string[];
+  affected_parts?: number[];
 }
+
+const STAGE_NAME_MAP: Record<number, string> = {
+  1: "Skeleton Structure",
+  2: "Circulatory System",
+  3: "Urinary System",
+  4: "Digestive System",
+  5: "Gallbladder",
+  6: "Liver",
+  7: "Diaphragm",
+  8: "Heart",
+  9: "Lungs",
+  10: "Brain",
+  11: "Eyes",
+  12: "Muscular System",
+  13: "Full Body (Skin)",
+};
 
 // Generate a synthetic ECG signal (187 points)
 const generateSyntheticECG = (type: "normal" | "pvc" | "supraventricular"): number[] => {
@@ -178,6 +194,16 @@ export default function DiseaseDetector() {
       setResult(null);
       setError(null);
     }
+  };
+
+  const handleDeselectImage = () => {
+    if (previewUrl && previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setResult(null);
+    setError(null);
   };
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -353,12 +379,12 @@ export default function DiseaseDetector() {
 
   // Sub-navigation models list
   const models = [
-    { id: "bone", label: "Bone Fracture", icon: "orthopedics", desc: "Bone Fracture Detection (YOLOv8)" },
-    { id: "brain", label: "Brain Tumor", icon: "psychology", desc: "MRI Scan Tumor Box Segmenter (YOLOv8)" },
+    { id: "bone", label: "Bone Fracture", icon: "orthopedics", desc: "Bone Fracture Detection (YOLOv11)" },
+    { id: "brain", label: "Brain Tumor", icon: "psychology", desc: "MRI Scan Tumor Box Segmenter (YOLOv11)" },
     { id: "ecg", label: "ECG Classifier", icon: "show_chart", desc: "Arrhythmia Classification (1D-CNN)" },
     { id: "heart", label: "Heart Disease", icon: "favorite", desc: "Heart Risk Evaluator (XGBoost)" },
     { id: "chest", label: "Chest Pathology", icon: "pulmonology", desc: "Chest X-Ray pathologies (DenseNet121)" },
-    { id: "skin", label: "Skin Lesions", icon: "vaccines", desc: "Skin Cancer & Rash Classifier (YOLOv8)" },
+    { id: "skin", label: "Skin Lesions", icon: "vaccines", desc: "Skin Cancer & Rash Classifier (YOLOv11)" },
   ];
 
   return (
@@ -432,29 +458,31 @@ export default function DiseaseDetector() {
                 Upload Medical Scan (Image File)
               </label>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className={previewUrl ? "flex justify-center w-full" : "grid grid-cols-1 lg:grid-cols-2 gap-6"}>
                 {/* Upload drag drop zone */}
-                <div className="relative border-2 border-dashed border-[#DCD5C5] rounded-[24px] p-6 hover:bg-[#FAF6E8]/30 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[260px] bg-white">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                  />
-                  <div className="w-12 h-12 rounded-full bg-[#FAF6E8] flex items-center justify-center text-[#8C6B1F] mb-3">
-                    <MaterialIcon name="upload_file" className="text-2xl" />
+                {!previewUrl && (
+                  <div className="relative border-2 border-dashed border-[#DCD5C5] rounded-[24px] p-6 hover:bg-[#FAF6E8]/30 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[260px] bg-white">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                    />
+                    <div className="w-12 h-12 rounded-full bg-[#FAF6E8] flex items-center justify-center text-[#8C6B1F] mb-3">
+                      <MaterialIcon name="upload_file" className="text-2xl" />
+                    </div>
+                    <span className="text-sm font-semibold text-[#1C1B18] block">
+                      Choose file or drag here
+                    </span>
+                    <span className="text-xs text-[#787363] mt-1 block">
+                      Accepts PNG, JPG, JPEG X-Ray/MRI files
+                    </span>
                   </div>
-                  <span className="text-sm font-semibold text-[#1C1B18] block">
-                    Choose file or drag here
-                  </span>
-                  <span className="text-xs text-[#787363] mt-1 block">
-                    Accepts PNG, JPG, JPEG X-Ray/MRI files
-                  </span>
-                </div>
+                )}
 
                 {/* Scan preview card */}
                 {previewUrl && (
-                  <div className="border border-[#E6E1D3] rounded-[24px] overflow-hidden bg-[#FAF6E8]/30 flex items-center justify-center p-4 relative min-h-[260px]">
+                  <div className="border border-[#E6E1D3] rounded-[24px] overflow-hidden bg-[#FAF6E8]/30 flex items-center justify-center p-4 relative min-h-[260px] w-full max-w-2xl">
                     <div className="relative inline-block max-w-full max-h-[300px]">
                       <img
                         ref={imgRef}
@@ -463,6 +491,16 @@ export default function DiseaseDetector() {
                         onLoad={handleImageLoad}
                         className="rounded-xl object-contain max-h-[300px]"
                       />
+                      
+                      {/* Cancel/Deselect button in the right-top corner of the image */}
+                      <button
+                        type="button"
+                        onClick={handleDeselectImage}
+                        className="absolute top-2 right-2 bg-white/95 hover:bg-white text-[#1C1B18] hover:text-[#8C6B1F] rounded-full p-1.5 shadow-md flex items-center justify-center cursor-pointer transition-all z-20 border border-[#E6E1D3]"
+                        title="Remove image"
+                      >
+                        <MaterialIcon name="close" className="text-sm font-bold" />
+                      </button>
                       
                       {/* Bounding box rendering logic (Brain tumor model) */}
                       {activeModel === "brain" &&
@@ -1003,7 +1041,7 @@ export default function DiseaseDetector() {
                         <div className="flex flex-wrap gap-1.5">
                           {result.affected_parts.map((part, i) => (
                             <span key={i} className="px-2.5 py-1 bg-white text-[#8C6B1F] border border-[#E6E1D3]/50 rounded-full font-medium text-[10px] uppercase tracking-wider">
-                              {part}
+                              {STAGE_NAME_MAP[part] || `Part ${part}`}
                             </span>
                           ))}
                         </div>

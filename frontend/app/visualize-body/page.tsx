@@ -43,7 +43,11 @@ export default function VisualizeBodyPage() {
           <span className="material-symbols-outlined text-2xl text-[#8C6B1F]">accessibility_new</span>
           <div>
             <h1 className="font-serif text-3xl font-bold text-[#1C1B18] leading-tight">Visualize Your Body</h1>
-            <p className="text-xs text-[#787363] font-sans mt-0.5">Interactive 3D anatomical layer explorer</p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-1">
+              <p className="text-xs text-[#787363] font-sans">Interactive 3D anatomical layer explorer</p>
+              <span className="hidden sm:inline text-xs text-[#DCD5C5]">•</span>
+              <p className="text-xs text-[#8C6B1F] font-sans font-medium">Click on a any part to see its medical reports</p>
+            </div>
           </div>
         </div>
         <BodyVisualizer />

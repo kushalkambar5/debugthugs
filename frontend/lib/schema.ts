@@ -124,7 +124,7 @@ export const diseaseScans = pgTable('disease_scans', {
   predictionResult: jsonb('prediction_result'),
   status: scanStatusEnum('status').default('PENDING'),
   aiExplanation: text('ai_explanation'),
-  affectedParts: text('affected_parts').array(),
+  affectedParts: integer('affected_parts').array(),
   medicines: text('medicines').array(),
   aiSuggestions: text('ai_suggestions').array(),
   createdAt: timestamp('created_at').defaultNow().notNull(),

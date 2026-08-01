@@ -242,7 +242,7 @@ interface DiseaseScan {
   predictionResult: any;
   status: string;
   aiExplanation: string | null;
-  affectedParts: string[] | null;
+  affectedParts: number[] | null;
   medicines: string[] | null;
   createdAt: string;
 }
@@ -255,6 +255,7 @@ interface MedicalReport {
   fileUrl: string | null;
   aiSummary: any;
   medicines: string[] | null;
+  affectedParts?: number[] | null;
   uploadedAt: string;
 }
 
@@ -266,6 +267,11 @@ function partMatches(partName: string, query: string): boolean {
 }
 
 function scanMatchesPart(scan: DiseaseScan, partId: string, partName: string): boolean {
+  const selectedStageObj = DETAILED_STAGES.find((s) => s.id === partId);
+  const selectedPartStage = selectedStageObj?.stage;
+  if (selectedPartStage && scan.affectedParts && scan.affectedParts.includes(selectedPartStage)) {
+    return true;
+  }
   if (!scan.affectedParts || scan.affectedParts.length === 0) {
     // Fallback: match by scan type keywords
     const st = scan.scanType.toLowerCase();
@@ -277,10 +283,13 @@ function scanMatchesPart(scan: DiseaseScan, partId: string, partName: string): b
     if (pid === "skin" && st.includes("skin")) return true;
     return false;
   }
-  return scan.affectedParts.some((p) => partMatches(p, partId) || partMatches(p, partName));
+  return false;
 }
 
-function reportMatchesPart(report: MedicalReport, partId: string, partName: string): boolean {
+function reportMatchesPart(report: MedicalReport, partId: string, partName: string, selectedPartStage?: number): boolean {
+  if (selectedPartStage && Array.isArray(report.affectedParts) && report.affectedParts.includes(selectedPartStage)) {
+    return true;
+  }
   const haystack = `${report.title} ${report.description || ""}`.toLowerCase();
   return haystack.includes(partId.toLowerCase()) || haystack.includes(partName.toLowerCase());
 }
@@ -298,6 +307,8 @@ function PartTimelinePanel({
   scans,
   reports,
   loading,
+  showAll = false,
+  allTitle = "All Medical Reports",
 }: {
   selectedPartId: string | null;
   selectedPartName: string;
@@ -305,6 +316,8 @@ function PartTimelinePanel({
   scans: DiseaseScan[];
   reports: MedicalReport[];
   loading: boolean;
+  showAll?: boolean;
+  allTitle?: string;
 }) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
@@ -320,11 +333,11 @@ function PartTimelinePanel({
     });
   };
 
-  if (!selectedPartId) {
+  if (!selectedPartId && !showAll) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center gap-2 px-4 py-6">
         <span className="text-3xl">👆</span>
-        <p className="font-serif font-bold text-[#4D493E] text-sm">Click an organ</p>
+        <p className="font-serif font-bold text-[#4D493E] text-sm">Click on a any part to see its medical reports</p>
         <p className="text-[10px] text-[#787363] font-sans leading-relaxed">
           Tap any organ on the body model to see its medical timeline here.
         </p>
@@ -344,16 +357,20 @@ function PartTimelinePanel({
     );
   }
 
-  const matchedScans = scans.filter((s) => scanMatchesPart(s, selectedPartId, selectedPartName));
-  const matchedReports = reports.filter((r) => reportMatchesPart(r, selectedPartId, selectedPartName));
+  const selectedStageObj = DETAILED_STAGES.find((s) => s.id === selectedPartId);
+  const selectedPartStage = selectedStageObj?.stage;
+  const matchedScans = showAll ? scans : scans.filter((s) => scanMatchesPart(s, selectedPartId!, selectedPartName));
+  const matchedReports = showAll ? reports : reports.filter((r) => reportMatchesPart(r, selectedPartId!, selectedPartName, selectedPartStage));
   const totalCount = matchedScans.length + matchedReports.length;
 
   return (
     <div className="space-y-3 overflow-y-auto pr-1 flex-1" style={{ maxHeight: "320px" }}>
       <div className="flex items-center gap-2 sticky top-0 bg-[#FAF9F5] pb-2 z-10">
-        <span className="text-lg">{selectedPartEmoji}</span>
+        <span className="text-lg">{showAll ? "📋" : selectedPartEmoji}</span>
         <div>
-          <p className="font-serif text-sm font-bold text-[#1C1B18] leading-tight">{selectedPartName}</p>
+          <p className="font-serif text-sm font-bold text-[#1C1B18] leading-tight">
+            {showAll ? allTitle : selectedPartName}
+          </p>
           <p className="text-[9px] text-[#787363] font-sans">{totalCount} related record{totalCount !== 1 ? "s" : ""}</p>
         </div>
       </div>
@@ -462,7 +479,7 @@ function PartTimelinePanel({
   );
 }
 
-function ReportNewProblemForm({ onSuccess }: { onSuccess: () => void }) {
+function ReportNewProblemForm({ onSuccess, selectedPart }: { onSuccess: () => void; selectedPart: DetailedStage | null }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [reportType, setReportType] = useState("OTHER");
@@ -498,6 +515,12 @@ function ReportNewProblemForm({ onSuccess }: { onSuccess: () => void }) {
       fd.append("reportType", reportType);
       if (reportDate) fd.append("reportDate", reportDate);
       if (file) fd.append("file", file);
+      if (selectedPart) {
+        fd.append("selectedPartId", selectedPart.id);
+        fd.append("selectedPartName", selectedPart.name);
+        fd.append("selectedPartStage", String(selectedPart.stage));
+      }
+      fd.append("fromVisualizeBody", "true");
 
       const resp = await fetch("/api/medical-reports", { method: "POST", body: fd });
       if (!resp.ok) {
@@ -758,6 +781,15 @@ export default function BodyVisualizer() {
     }
   };
 
+  // Automatically deselect if the currently selected part becomes hidden due to navigation
+  useEffect(() => {
+    if (selectedPart && !isLayerVisible(selectedPart)) {
+      setSelectedPart(null);
+      setClickedOrganTopId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, mode, selectedPart]);
+
   // Tooltip Handlers
   const handleMouseEnter = (e: React.MouseEvent, labelText: string, id: string) => {
     setHoveredLayer(id);
@@ -872,9 +904,18 @@ export default function BodyVisualizer() {
               };
 
               if (stageItem.type === "full-body") {
+                const isCirculatory = stageItem.id === "circulatory";
                 baseStyles.top = 0;
                 baseStyles.left = "50%";
-                baseStyles.transform = `translateX(-50%) ${visible ? "scale(1)" : "scale(0.97)"}`;
+                baseStyles.transform = `translateX(-50%) ${
+                  visible
+                    ? isCirculatory
+                      ? "scale(1.4)"
+                      : "scale(1)"
+                    : isCirculatory
+                    ? "scale(1.37)"
+                    : "scale(0.97)"
+                }`;
                 baseStyles.width = "auto";
                 baseStyles.height = "100%";
                 baseStyles.objectFit = "contain";
@@ -946,27 +987,53 @@ export default function BodyVisualizer() {
             }`}
           >
             <span className="material-symbols-outlined text-[12px]">add_circle</span>
-            Report Problem
+            Report New Problem
           </button>
         </div>
 
         {/* Part Timeline section */}
-        {rightTab === "timeline" && (
-          <div className="flex-1 p-4 flex flex-col overflow-hidden">
-            <div className="text-[10px] font-bold text-[#4D493E] uppercase tracking-wider mb-3 font-sans flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-sm text-[#8C6B1F]">timeline</span>
-              {selectedPart ? `${selectedPart.name} — History` : "Organ Timeline"}
+        {rightTab === "timeline" && (() => {
+          const isFullBodyActive = 
+            (mode === "detailed" && (stage === 1 || stage === 2 || stage === 12 || stage === 13)) ||
+            (mode === "keyframe" && (stage === 1 || stage === 2 || stage === 4 || stage === 5));
+
+          const activeId = isFullBodyActive
+            ? (mode === "detailed"
+                ? (stage === 1 ? "skeleton" : stage === 2 ? "circulatory" : stage === 12 ? "muscles" : "skin")
+                : (stage === 1 ? "skeleton" : stage === 2 ? "circulatory" : stage === 4 ? "muscles" : "skin"))
+            : null;
+
+          const activeStageObj = activeId ? DETAILED_STAGES.find((s) => s.id === activeId) : null;
+          const activeName = activeStageObj ? activeStageObj.name : "";
+          const activeEmoji = activeStageObj ? activeStageObj.emoji : "";
+
+          let allTitle = "All Medical Reports";
+          if (isFullBodyActive) {
+            if (activeId === "skeleton") allTitle = "Bone Structure - All Reports";
+            else if (activeId === "circulatory") allTitle = "Circulatory System - All Reports";
+            else if (activeId === "muscles") allTitle = "Muscular System - All Reports";
+            else if (activeId === "skin") allTitle = "Full Body - All Reports";
+          }
+
+          return (
+            <div className="flex-1 p-4 flex flex-col overflow-hidden">
+              <div className="text-[10px] font-bold text-[#4D493E] uppercase tracking-wider mb-3 font-sans flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-sm text-[#8C6B1F]">timeline</span>
+                {isFullBodyActive ? allTitle : (selectedPart ? `${selectedPart.name} — History` : "Organ Timeline")}
+              </div>
+              <PartTimelinePanel
+                selectedPartId={isFullBodyActive ? activeId : (selectedPart?.id || null)}
+                selectedPartName={isFullBodyActive ? activeName : (selectedPart?.name || "")}
+                selectedPartEmoji={isFullBodyActive ? activeEmoji : (selectedPart?.emoji || "")}
+                scans={medScans}
+                reports={medReports}
+                loading={medLoading}
+                showAll={false}
+                allTitle={allTitle}
+              />
             </div>
-            <PartTimelinePanel
-              selectedPartId={selectedPart?.id || null}
-              selectedPartName={selectedPart?.name || ""}
-              selectedPartEmoji={selectedPart?.emoji || ""}
-              scans={medScans}
-              reports={medReports}
-              loading={medLoading}
-            />
-          </div>
-        )}
+          );
+        })()}
 
         {/* Report New Problem section */}
         {rightTab === "report" && (
@@ -979,6 +1046,7 @@ export default function BodyVisualizer() {
               Log a symptom, upload a scan image or PDF, or describe a condition. It will appear in your Medical History.
             </p>
             <ReportNewProblemForm
+              selectedPart={selectedPart}
               onSuccess={() => {
                 // Refresh medical records
                 fetch("/api/medical-history")

@@ -179,7 +179,7 @@ export default function PatientsDashboard() {
                           <div className="flex items-center gap-3">
                             <div className="relative w-8 h-8 rounded-full overflow-hidden bg-[#FAF6E8] border shrink-0">
                               <img
-                                src={p.profileImageUrl || "/avatars/avatar1.png"}
+                                src={p.profileImageUrl || "/avatars/avatar1.svg"}
                                 alt="avatar"
                                 className="w-full h-full object-cover"
                               />
@@ -244,7 +244,7 @@ export default function PatientsDashboard() {
                   <div className="flex items-center gap-3">
                     <div className="relative w-12 h-12 rounded-full overflow-hidden bg-[#FAF6E8] border shrink-0">
                       <img
-                        src={selectedPatient.profileImageUrl || "/avatars/avatar1.png"}
+                        src={selectedPatient.profileImageUrl || "/avatars/avatar1.svg"}
                         alt="avatar"
                         className="w-full h-full object-cover"
                       />

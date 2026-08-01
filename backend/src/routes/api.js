@@ -634,7 +634,20 @@ router.post('/scans', authenticateProxyUser, upload.single('file'), async (req, 
           1. A detailed medical explanation of the results (ai_explanation). Keep it clear and professional.
           2. Actionable recommendations or suggestions for the patient (ai_suggestions).
           3. Common medications or treatments associated with this diagnosis (medicines).
-          4. Affected body parts or anatomical systems involved (affected_parts).
+          4. Affected body parts or anatomical systems involved (affected_parts) from the following list of 13 predefined human body parts:
+             1: Skeleton Structure
+             2: Circulatory System
+             3: Urinary System
+             4: Digestive System
+             5: Gallbladder
+             6: Liver
+             7: Diaphragm
+             8: Heart
+             9: Lungs
+             10: Brain
+             11: Eyes
+             12: Muscular System
+             13: Full Body (Skin)
           
           You MUST respond ONLY with a raw JSON object. Do not include markdown code block formatting (like \`\`\`json).
           
@@ -643,7 +656,7 @@ router.post('/scans', authenticateProxyUser, upload.single('file'), async (req, 
             "ai_explanation": "Detailed explanation here...",
             "ai_suggestions": ["Suggestion 1", "Suggestion 2", ...],
             "medicines": ["Medicine 1", "Medicine 2", ...],
-            "affected_parts": ["Affected Part 1", "Affected Part 2", ...]
+            "affected_parts": [integer1, integer2, ...]
           }
         `;
 
@@ -672,7 +685,11 @@ router.post('/scans', authenticateProxyUser, upload.single('file'), async (req, 
           if (parsed.ai_explanation) aiExplanation = parsed.ai_explanation;
           if (Array.isArray(parsed.ai_suggestions)) aiSuggestions = parsed.ai_suggestions;
           if (Array.isArray(parsed.medicines)) medicines = parsed.medicines;
-          if (Array.isArray(parsed.affected_parts)) affectedParts = parsed.affected_parts;
+          if (Array.isArray(parsed.affected_parts)) {
+            affectedParts = parsed.affected_parts
+              .map(x => parseInt(x, 10))
+              .filter(x => !isNaN(x) && x >= 1 && x <= 13);
+          }
         }
       } catch (err) {
         console.error('Failed to fetch suggestions from OpenCode Zen API:', err);
@@ -683,12 +700,12 @@ router.post('/scans', authenticateProxyUser, upload.single('file'), async (req, 
       aiSuggestions = ['Consult a healthcare professional for a detailed evaluation.', 'Monitor your condition and schedule regular checkups.'];
     }
     if (affectedParts.length === 0) {
-      if (scanType === 'BONE_FRACTURE') affectedParts = ['skeleton'];
-      else if (scanType === 'BRAIN_TUMOR') affectedParts = ['brain'];
-      else if (scanType === 'ECG' || scanType === 'HEART') affectedParts = ['cardiovascular system'];
-      else if (scanType === 'SKIN') affectedParts = ['skin'];
-      else if (scanType === 'CHEST') affectedParts = ['chest', 'lungs'];
-      else affectedParts = ['general anatomy'];
+      if (scanType === 'BONE_FRACTURE') affectedParts = [1];
+      else if (scanType === 'BRAIN_TUMOR') affectedParts = [10];
+      else if (scanType === 'ECG' || scanType === 'HEART') affectedParts = [8];
+      else if (scanType === 'SKIN') affectedParts = [13];
+      else if (scanType === 'CHEST') affectedParts = [9];
+      else affectedParts = [13];
     }
     if (medicines.length === 0) {
       if (scanType === 'BONE_FRACTURE' && predictionResult.diagnosis === 'fractured') {
@@ -732,7 +749,7 @@ router.post('/scans', authenticateProxyUser, upload.single('file'), async (req, 
 router.post('/medical-reports', authenticateProxyUser, upload.single('file'), async (req, res) => {
   try {
     const patientId = req.user.id;
-    const { title, description, reportType, reportDate } = req.body;
+    const { title, description, reportType, reportDate, selectedPartId, selectedPartName, selectedPartStage, fromVisualizeBody } = req.body;
 
     if (!title) {
       return res.status(400).json({ message: 'Title is required.' });
@@ -742,6 +759,15 @@ router.post('/medical-reports', authenticateProxyUser, upload.single('file'), as
     let r2Key = null;
     let fileType = null;
     let aiSummary = null;
+    let medicines = null;
+    let affectedParts = [];
+
+    if (selectedPartStage) {
+      const stageInt = parseInt(selectedPartStage, 10);
+      if (!isNaN(stageInt) && stageInt >= 1 && stageInt <= 13) {
+        affectedParts.push(stageInt);
+      }
+    }
 
     if (req.file) {
       fileType = req.file.mimetype || 'application/octet-stream';
@@ -757,43 +783,144 @@ router.post('/medical-reports', authenticateProxyUser, upload.single('file'), as
       if (publicUrl.startsWith(baseUrl)) {
         r2Key = publicUrl.substring(baseUrl.length + 1);
       }
+    }
 
-      if (fileType.startsWith('image/')) {
-        const apiKey = process.env.OPENCODE_ZEN_KEY;
-        const model = process.env.OPENCODE_ZEN_MODEL || 'deepseek-v4-flash-free';
+    const apiKey = process.env.OPENCODE_ZEN_KEY;
+    const model = process.env.OPENCODE_ZEN_MODEL || 'deepseek-v4-flash-free';
 
-        if (apiKey) {
+    // If submitted from visualize-body page, generate ai_summary, medicines, and affected_parts via AI
+    if (fromVisualizeBody === 'true' && apiKey) {
+      try {
+        let primaryPartInfo = "";
+        if (selectedPartStage && selectedPartName) {
+          primaryPartInfo = `The user clicked/selected the body part: "${selectedPartName}" (stage number: ${selectedPartStage}) in their anatomical visualization.`;
+        }
+
+        let fileInfo = "";
+        if (req.file) {
+          fileInfo = `The user also attached a file named "${req.file.originalname}" (type: ${req.file.mimetype}).`;
+        }
+
+        const prompt = `You are a clinical AI assistant.
+A patient has logged a new medical report/symptom with the following details:
+- Title: "${title}"
+- Description: "${description || 'No description provided'}"
+${primaryPartInfo}
+${fileInfo}
+
+You need to analyze this medical report and generate three pieces of information:
+1. A concise, professional clinical summary (2-4 sentences) of what this report likely contains, the symptoms, and any key observations.
+2. A list of relevant or recommended medicines/treatments that are commonly associated with this problem or could help relieve the symptoms (provide a clean list of 1 to 4 medicine names or general treatments).
+3. Identify all affected parts from the following predefined list of 13 body parts.
+   Predefined List of 13 parts:
+   1: Skeleton Structure
+   2: Circulatory System
+   3: Urinary System
+   4: Digestive System
+   5: Gallbladder
+   6: Liver
+   7: Diaphragm
+   8: Heart
+   9: Lungs
+   10: Brain
+   11: Eyes
+   12: Muscular System
+   13: Full Body (Skin)
+
+   Instructions for affected parts:
+   - If the user selected/clicked a specific body part (e.g. stage ${selectedPartStage || 'none'}), that stage number MUST be included in the affected parts list.
+   - If the reported problem or symptoms affect any other parts/systems from the list of 13 parts, identify them and include their stage numbers (integers 1-13) as well.
+   - Return only the integers (1-13) representing the affected parts.
+
+You MUST respond with a JSON object containing exactly these keys:
+{
+  "ai_summary": "string containing the clinical summary",
+  "medicines": ["medicine 1", "medicine 2", ...],
+  "affected_parts": [integer1, integer2, ...]
+}
+
+Return ONLY the raw JSON object. Do not include markdown code block formatting (like \`\`\`json), just the plain JSON string.`;
+
+        const response = await fetch('https://opencode.ai/zen/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: 'You are a clinical AI assistant. You output raw JSON only.' },
+              { role: 'user', content: prompt },
+            ],
+            temperature: 0.2,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let content = data.choices?.[0]?.message?.content?.trim() || "";
+          if (content.startsWith("```")) {
+            content = content.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
+          }
           try {
-            const prompt = `You are a medical AI assistant. A patient uploaded a medical image file named "${req.file.originalname}" with the title "${title}"${description ? ` and description: "${description}"` : ''}. Generate a concise, professional clinical summary (2-4 sentences) of what this report likely contains and any key observations. Respond with plain text only.`;
-            const response = await fetch('https://opencode.ai/zen/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                model,
-                messages: [
-                  { role: 'system', content: 'You are a clinical AI assistant. Be concise and professional.' },
-                  { role: 'user', content: prompt },
-                ],
-                temperature: 0.2,
-              }),
-            });
-
-            if (response.ok) {
-              const data = await response.json();
-              const summary = data.choices?.[0]?.message?.content?.trim();
-              if (summary) aiSummary = summary;
+            const parsed = JSON.parse(content);
+            if (parsed.ai_summary) aiSummary = parsed.ai_summary;
+            if (Array.isArray(parsed.medicines)) medicines = parsed.medicines;
+            if (Array.isArray(parsed.affected_parts)) {
+              const extraParts = parsed.affected_parts
+                .map(x => parseInt(x, 10))
+                .filter(x => !isNaN(x) && x >= 1 && x <= 13);
+              const merged = new Set([...affectedParts, ...extraParts]);
+              affectedParts = Array.from(merged);
             }
           } catch (e) {
-            console.error('AI summary generation failed:', e);
+            console.error('Failed to parse AI JSON response:', e, content);
           }
         }
+      } catch (e) {
+        console.error('AI generation failed:', e);
       }
+    }
 
-      if (!aiSummary && description) {
-        aiSummary = description;
+    // Fallback to standard summary for general image upload if aiSummary not set
+    if (!aiSummary && req.file && fileType && fileType.startsWith('image/') && apiKey) {
+      try {
+        const prompt = `You are a medical AI assistant. A patient uploaded a medical image file named "${req.file.originalname}" with the title "${title}"${description ? ` and description: "${description}"` : ''}. Generate a concise, professional clinical summary (2-4 sentences) of what this report likely contains and any key observations. Respond with plain text only.`;
+        const response = await fetch('https://opencode.ai/zen/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: 'You are a clinical AI assistant. Be concise and professional.' },
+              { role: 'user', content: prompt },
+            ],
+            temperature: 0.2,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const summary = data.choices?.[0]?.message?.content?.trim();
+          if (summary) aiSummary = summary;
+        }
+      } catch (e) {
+        console.error('AI summary generation failed:', e);
+      }
+    }
+
+    if (!aiSummary && description) {
+      aiSummary = description;
+    }
+
+    if (affectedParts.length === 0 && selectedPartStage) {
+      const stageInt = parseInt(selectedPartStage, 10);
+      if (!isNaN(stageInt) && stageInt >= 1 && stageInt <= 13) {
+        affectedParts.push(stageInt);
       }
     }
 
@@ -808,6 +935,8 @@ router.post('/medical-reports', authenticateProxyUser, upload.single('file'), as
         r2Key,
         fileType,
         aiSummary: aiSummary ? { summary: aiSummary } : null,
+        medicines: medicines || null,
+        affectedParts: affectedParts.length > 0 ? affectedParts : null,
         reportDate: reportDate || null,
       })
       .returning();
@@ -816,6 +945,65 @@ router.post('/medical-reports', authenticateProxyUser, upload.single('file'), as
   } catch (error) {
     console.error('Error creating medical report:', error);
     return res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+});
+
+// ==========================================
+// 8.5 GET USER PROFILE
+// ==========================================
+router.get('/user/profile', authenticateProxyUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const [user] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        fullName: users.fullName,
+        dateOfBirth: users.dateOfBirth,
+        gender: users.gender,
+        bloodGroup: users.bloodGroup,
+        heightCm: users.heightCm,
+        weightKg: users.weightKg,
+        allergiesJson: users.allergiesJson,
+        chronicConditionsJson: users.chronicConditionsJson,
+        currentMedicationsJson: users.currentMedicationsJson,
+        emergencyContactPhone: users.emergencyContactPhone,
+        role: users.role,
+        onboardingComplete: users.onboardingComplete,
+        profileImageUrl: users.profileImageUrl,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    return res.json(user);
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    return res.status(500).json({ message: 'Internal server error.', error: error.message });
+  }
+});
+
+// ==========================================
+// 8.6 GET HEALTH METRICS
+// ==========================================
+router.get('/health/metrics', authenticateProxyUser, async (req, res) => {
+  try {
+    const patientId = req.user.id;
+    const metrics = await db
+      .select()
+      .from(healthMetrics)
+      .where(eq(healthMetrics.patientId, patientId))
+      .orderBy(desc(healthMetrics.metricDate))
+      .limit(30);
+
+    return res.json(metrics);
+  } catch (error) {
+    console.error('Error fetching health metrics:', error);
+    return res.status(500).json({ message: 'Internal server error.', error: error.message });
   }
 });
 
@@ -893,26 +1081,46 @@ router.get('/chat/doctor-patient', authenticateProxyUser, async (req, res) => {
     const userId = req.user.id;
 
     if (role === 'PATIENT') {
-      // Find the active doctor associated with this patient
-      const [association] = await db
-        .select()
-        .from(doctorPatients)
-        .where(
-          and(
-            eq(doctorPatients.patientId, userId),
-            eq(doctorPatients.isActive, true)
-          )
-        );
+      const { doctorId: queryDoctorId } = req.query;
+      let association;
+      let doctorId;
 
-      if (!association) {
+      if (queryDoctorId) {
+        [association] = await db
+          .select()
+          .from(doctorPatients)
+          .where(
+            and(
+              eq(doctorPatients.patientId, userId),
+              eq(doctorPatients.doctorId, queryDoctorId),
+              eq(doctorPatients.isActive, true)
+            )
+          );
+        if (association) {
+          doctorId = queryDoctorId;
+        }
+      } else {
+        [association] = await db
+          .select()
+          .from(doctorPatients)
+          .where(
+            and(
+              eq(doctorPatients.patientId, userId),
+              eq(doctorPatients.isActive, true)
+            )
+          );
+        if (association) {
+          doctorId = association.doctorId;
+        }
+      }
+
+      if (!association || !doctorId) {
         return res.status(200).json({
           success: false,
           code: 'NO_DOCTOR_ASSIGNED',
           message: 'No active doctor is currently assigned to you. Please link a doctor first.',
         });
       }
-
-      const doctorId = association.doctorId;
 
       // Find or initialize chat
       let [chat] = await db
@@ -1080,22 +1288,42 @@ router.post('/chat/doctor-patient', authenticateProxyUser, async (req, res) => {
     let doctorId, resolvedPatientId;
 
     if (role === 'PATIENT') {
-      // Find the active doctor associated with this patient
-      const [association] = await db
-        .select()
-        .from(doctorPatients)
-        .where(
-          and(
-            eq(doctorPatients.patientId, userId),
-            eq(doctorPatients.isActive, true)
-          )
-        );
+      const { doctorId: bodyDoctorId } = req.body;
+      let association;
 
-      if (!association) {
+      if (bodyDoctorId) {
+        [association] = await db
+          .select()
+          .from(doctorPatients)
+          .where(
+            and(
+              eq(doctorPatients.patientId, userId),
+              eq(doctorPatients.doctorId, bodyDoctorId),
+              eq(doctorPatients.isActive, true)
+            )
+          );
+        if (association) {
+          doctorId = bodyDoctorId;
+        }
+      } else {
+        [association] = await db
+          .select()
+          .from(doctorPatients)
+          .where(
+            and(
+              eq(doctorPatients.patientId, userId),
+              eq(doctorPatients.isActive, true)
+            )
+          );
+        if (association) {
+          doctorId = association.doctorId;
+        }
+      }
+
+      if (!association || !doctorId) {
         return res.status(404).json({ message: 'No active doctor assigned. Cannot send message.' });
       }
 
-      doctorId = association.doctorId;
       resolvedPatientId = userId;
 
     } else if (role === 'DOCTOR') {

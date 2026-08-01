@@ -205,7 +205,7 @@ export default function ManageDoctorsPage() {
                     <div className="flex gap-4">
                       <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-[#FAF6E8] border border-[#E6E1D3] shrink-0">
                         <Image
-                          src={doc.profileImageUrl || "/avatars/avatar1.png"}
+                          src={doc.profileImageUrl || "/avatars/avatar1.svg"}
                           alt={doc.fullName}
                           fill
                           className="object-cover"
@@ -288,7 +288,7 @@ export default function ManageDoctorsPage() {
                   <div className="flex gap-4">
                     <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-[#FAF6E8] border border-[#E6E1D3] shrink-0">
                       <Image
-                        src={doc.profileImageUrl || "/avatars/avatar1.png"}
+                        src={doc.profileImageUrl || "/avatars/avatar1.svg"}
                         alt={doc.fullName}
                         fill
                         className="object-cover"

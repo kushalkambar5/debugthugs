@@ -58,12 +58,12 @@ def train_brain_tumor_model():
         print("\n" + "="*50)
         print("SUCCESS! Model training is complete.")
         print(f"Your model weights are saved at: {best_weights_path}")
-        print("Download 'best.pt' and rename it to 'best_brain_tumor_yolov8.pt' for your API.")
+        print("Download 'best.pt' and rename it to 'best_brain_tumor_YOLOv11.pt' for your API.")
         print("="*50 + "\n")
         
         # Optional: Copy it to the current working directory for easy download in Colab
-        shutil.copy(best_weights_path, './best_brain_tumor_yolov8.pt')
-        print("Copied to current directory as 'best_brain_tumor_yolov8.pt' for easy downloading.")
+        shutil.copy(best_weights_path, './best_brain_tumor_YOLOv11.pt')
+        print("Copied to current directory as 'best_brain_tumor_YOLOv11.pt' for easy downloading.")
     else:
         print("Warning: Could not locate the best.pt file. Check the runs directory.")
 
