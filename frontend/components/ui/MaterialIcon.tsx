@@ -24,7 +24,6 @@ export function MaterialIcon({
       className={`material-symbols-outlined select-none inline-flex items-center justify-center shrink-0 leading-none align-middle ${className}`}
       style={{
         fontVariationSettings: `'FILL' ${fill ? 1 : 0}, 'wght' ${weight}, 'GRAD' ${grade}, 'opsz' ${opticalSize}`,
-        fontSize: "inherit",
         ...style,
       }}
       aria-hidden="true"

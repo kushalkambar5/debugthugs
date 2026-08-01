@@ -19,6 +19,10 @@ interface PredictionResult {
   risk_prediction?: number;
   disease_probability?: number;
   pathology_probabilities?: Record<string, number>;
+  ai_explanation?: string;
+  ai_suggestions?: string[];
+  medicines?: string[];
+  affected_parts?: string[];
 }
 
 // Generate a synthetic ECG signal (187 points)
@@ -278,7 +282,58 @@ export default function DiseaseDetector() {
       }
 
       const data = await resp.json();
-      setResult(data);
+
+      // Map client-side model names to the ScanType enum
+      const scanTypeMap: Record<string, string> = {
+        bone: "BONE_FRACTURE",
+        brain: "BRAIN_TUMOR",
+        ecg: "ECG",
+        heart: "HEART",
+        skin: "SKIN",
+        chest: "CHEST"
+      };
+      
+      const scanType = scanTypeMap[activeModel];
+      
+      // Construct input metadata
+      let modelInputMetadata: any = null;
+      if (activeModel === "ecg") {
+        modelInputMetadata = { signal: ecgSignal };
+      } else if (activeModel === "heart") {
+        modelInputMetadata = heartForm;
+      }
+
+      // Post scan and prediction details to our backend /api/scans to persist and generate suggestions
+      const saveFormData = new FormData();
+      saveFormData.append("scanType", scanType);
+      saveFormData.append("predictionResult", JSON.stringify(data));
+      if (modelInputMetadata) {
+        saveFormData.append("modelInputMetadata", JSON.stringify(modelInputMetadata));
+      }
+      if (selectedFile) {
+        saveFormData.append("file", selectedFile);
+      }
+
+      const saveResp = await fetch("/api/scans", {
+        method: "POST",
+        body: saveFormData,
+      });
+
+      if (!saveResp.ok) {
+        const saveErrText = await saveResp.text();
+        console.warn("Failed to save disease scan record to database:", saveErrText);
+        setResult(data);
+      } else {
+        const savedScan = await saveResp.json();
+        // Merge database saved details (R2 image URL, OpenCode Zen generated recommendations/explanation/medicines/affected parts)
+        setResult({
+          ...data,
+          ai_explanation: savedScan.aiExplanation,
+          ai_suggestions: savedScan.aiSuggestions,
+          medicines: savedScan.medicines,
+          affected_parts: savedScan.affectedParts
+        });
+      }
     } catch (err: any) {
       console.error(err);
       setError(err.message || "An unexpected error occurred during prediction.");
@@ -289,11 +344,11 @@ export default function DiseaseDetector() {
 
   // Sub-navigation models list
   const models = [
-    { id: "bone", label: "Bone Fracture", icon: "bone", desc: "Bone Fracture Detection (YOLOv8)" },
+    { id: "bone", label: "Bone Fracture", icon: "orthopedics", desc: "Bone Fracture Detection (YOLOv8)" },
     { id: "brain", label: "Brain Tumor", icon: "psychology", desc: "MRI Scan Tumor Box Segmenter (YOLOv8)" },
     { id: "ecg", label: "ECG Classifier", icon: "show_chart", desc: "Arrhythmia Classification (1D-CNN)" },
     { id: "heart", label: "Heart Disease", icon: "favorite", desc: "Heart Risk Evaluator (XGBoost)" },
-    { id: "chest", label: "Chest Pathology", icon: "clinical_suite", desc: "Chest X-Ray pathologies (DenseNet121)" },
+    { id: "chest", label: "Chest Pathology", icon: "pulmonology", desc: "Chest X-Ray pathologies (DenseNet121)" },
     { id: "skin", label: "Skin Lesions", icon: "vaccines", desc: "Skin Cancer & Rash Classifier (YOLOv8)" },
   ];
 
@@ -324,7 +379,7 @@ export default function DiseaseDetector() {
               }`}
             >
               <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 overflow-hidden ${
                   activeModel === m.id ? "bg-white/10 text-white" : "bg-[#FAF6E8] text-[#8C6B1F]"
                 }`}
               >
@@ -913,6 +968,67 @@ export default function DiseaseDetector() {
                         </div>
                       ))}
                   </div>
+                </div>
+              )}
+
+              {/* AI Clinical Recommendations (OpenCode Zen generated) */}
+              {result && (result.ai_explanation || (result.ai_suggestions && result.ai_suggestions.length > 0)) && (
+                <div className="mt-6 pt-6 border-t border-[#E6E1D3]/50 space-y-5 font-sans text-xs">
+                  <h6 className="font-serif text-sm font-bold text-[#1C1B18] flex items-center gap-1.5">
+                    <span className="w-1.5 h-4 bg-[#8C6B1F] rounded-full" />
+                    <MaterialIcon name="psychology" className="text-base text-[#8C6B1F]" />
+                    AI Clinical Insights & Recommendations
+                  </h6>
+                  
+                  {result.ai_explanation && (
+                    <div className="bg-[#FAF9F5] p-4 rounded-2xl border border-[#E6E1D3]/40 text-[#4D493E] leading-relaxed">
+                      <strong className="block text-[10px] text-[#787363] uppercase tracking-wider font-bold mb-1.5">Clinical Explanation & Rationale</strong>
+                      {result.ai_explanation}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {result.affected_parts && result.affected_parts.length > 0 && (
+                      <div className="space-y-2 bg-[#FAF9F5] p-4 rounded-2xl border border-[#E6E1D3]/40">
+                        <span className="block text-[10px] text-[#787363] uppercase tracking-wider font-bold mb-1">Affected Anatomical Parts</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {result.affected_parts.map((part, i) => (
+                            <span key={i} className="px-2.5 py-1 bg-white text-[#8C6B1F] border border-[#E6E1D3]/50 rounded-full font-medium text-[10px] uppercase tracking-wider">
+                              {part}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {result.medicines && result.medicines.length > 0 && (
+                      <div className="space-y-2 bg-[#FAF9F5] p-4 rounded-2xl border border-[#E6E1D3]/40">
+                        <span className="block text-[10px] text-[#787363] uppercase tracking-wider font-bold mb-1.5">Suggested Medications / Treatments</span>
+                        <ul className="space-y-1.5 text-[#4D493E]">
+                          {result.medicines.map((med, i) => (
+                            <li key={i} className="flex items-center gap-2">
+                              <MaterialIcon name="medical_services" className="text-sm text-[#8C6B1F]" />
+                              <span className="capitalize">{med}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  {result.ai_suggestions && result.ai_suggestions.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="block text-[10px] text-[#787363] uppercase tracking-wider font-bold">Actionable Patient Care Instructions</span>
+                      <div className="space-y-2">
+                        {result.ai_suggestions.map((sug, i) => (
+                          <div key={i} className="flex gap-2.5 items-start p-3.5 rounded-2xl bg-emerald-50/20 border border-emerald-100/50 text-[#155939]">
+                            <MaterialIcon name="check_circle" className="text-base text-emerald-600 mt-0.5" />
+                            <span>{sug}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -57,6 +57,9 @@ export function HeaderNav() {
   <Link href="/health-metrics" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">
     Health Metrics
   </Link>
+  <Link href="/medical-history" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">
+    Medical History
+  </Link>
 </>
             </>
           )}
@@ -221,6 +224,9 @@ export function HeaderNav() {
                 </Link>
                 <Link href="/health-metrics" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4]">
                   Health Metrics
+                </Link>
+                <Link href="/medical-history" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4]">
+                  Medical History
                 </Link>
               </>
             )}
