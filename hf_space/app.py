@@ -285,7 +285,6 @@ async def predict_skin(file: UploadFile = File(...)):
         "confidence": round(top_confidence, 2)
     }
 
-import getattr
 import gradio as gr
 
 def greet():
