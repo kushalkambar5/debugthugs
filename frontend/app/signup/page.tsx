@@ -214,9 +214,9 @@ export default function SignupPage() {
                       : "bg-white border-[#DCD5C5] text-[#787363] hover:bg-[#FDFDFD]"
                   }`}
                 >
-                  <MaterialIcon name="patient_list" className="text-2xl mb-1.5" />
-                  <span className="text-sm font-semibold font-sans">Patient</span>
-                  <span className="text-[10px] text-[#787363] font-sans mt-0.5 text-center">Seek clinical insights & logs</span>
+                  <MaterialIcon name="patient_list" className="text-2xl mb-1.5 pointer-events-none" />
+                  <span className="text-sm font-semibold font-sans pointer-events-none">Patient</span>
+                  <span className="text-[10px] text-[#787363] font-sans mt-0.5 text-center pointer-events-none">Seek clinical insights & logs</span>
                 </button>
 
                 <button
@@ -229,9 +229,9 @@ export default function SignupPage() {
                       : "bg-white border-[#DCD5C5] text-[#787363] hover:bg-[#FDFDFD]"
                   }`}
                 >
-                  <MaterialIcon name="stethoscope" className="text-2xl mb-1.5" />
-                  <span className="text-sm font-semibold font-sans">Doctor</span>
-                  <span className="text-[10px] text-[#787363] font-sans mt-0.5 text-center">Verify AI logs & manage patients</span>
+                  <MaterialIcon name="stethoscope" className="text-2xl mb-1.5 pointer-events-none" />
+                  <span className="text-sm font-semibold font-sans pointer-events-none">Doctor</span>
+                  <span className="text-[10px] text-[#787363] font-sans mt-0.5 text-center pointer-events-none">Verify AI logs & manage patients</span>
                 </button>
               </div>
             </div>

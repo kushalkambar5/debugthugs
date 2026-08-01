@@ -5,9 +5,9 @@ pydantic
 ultralytics
 torch>=2.0.0
 torchvision
-xgboost==2.0.2
-pandas==2.1.3
-numpy==1.26.2
-torchxrayvision==1.2.1
-scikit-image==0.22.0
+xgboost
+pandas
+numpy
+torchxrayvision
+scikit-image
 scikit-learn

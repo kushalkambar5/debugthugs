@@ -20,7 +20,6 @@ export const metadata: Metadata = {
       { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
   },
-  manifest: "/site.webmanifest",
   appleWebApp: {
     title: "MyWebSite",
   },
@@ -45,6 +44,7 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
         />
+        <link rel="manifest" href="/site.webmanifest" crossOrigin="use-credentials" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -57,6 +57,41 @@ export default function RootLayout({
                          s.includes('MetaMask') ||
                          s.includes('inpage.js');
                 }
+                function shouldFilter(args) {
+                  for (var i = 0; i < args.length; i++) {
+                    var arg = args[i];
+                    if (!arg) continue;
+                    var s = typeof arg === 'string' ? arg : (arg.stack || arg.message || String(arg));
+                    if (
+                      s.includes('chrome-extension://') ||
+                      s.includes('nkbihfbeogaeaoehlefnkodbefgpgknn') ||
+                      s.includes('MetaMask') ||
+                      s.includes('inpage.js') ||
+                      s.includes('contentscript.js') ||
+                      s.includes('MaxListenersExceededWarning') ||
+                      s.includes('ObjectMultiplex') ||
+                      s.includes('app-init-liveness') ||
+                      s.includes('React DevTools')
+                    ) {
+                      return true;
+                    }
+                  }
+                  return false;
+                }
+
+                // Patch console methods before any other script executes
+                var originalError = console.error;
+                console.error = function() {
+                  if (shouldFilter(arguments)) return;
+                  originalError.apply(console, arguments);
+                };
+
+                var originalWarn = console.warn;
+                console.warn = function() {
+                  if (shouldFilter(arguments)) return;
+                  originalWarn.apply(console, arguments);
+                };
+
                 window.addEventListener('unhandledrejection', function(e) {
                   var reason = e.reason;
                   var errStr = reason ? (reason.stack || reason.message || String(reason)) : '';

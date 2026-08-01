@@ -262,12 +262,26 @@ export default function Strands({
     const ctn = ctnDom.current;
     if (!ctn) return;
 
-    const renderer = new Renderer({
-      alpha: true,
-      premultipliedAlpha: true,
-      antialias: true
-    });
-    const gl = renderer.gl;
+    let renderer: any;
+    let gl: any;
+    try {
+      renderer = new Renderer({
+        alpha: true,
+        premultipliedAlpha: true,
+        antialias: true
+      });
+      gl = renderer.gl;
+      if (!gl) {
+        throw new Error("WebGL context not available");
+      }
+    } catch (e) {
+      console.warn("WebGL is not supported or failed to initialize for Strands:", e);
+      return;
+    }
+
+    const initWidth = ctn.offsetWidth || 1;
+    const initHeight = ctn.offsetHeight || 1;
+
     gl.clearColor(0, 0, 0, 0);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -283,7 +297,7 @@ export default function Strands({
       fragment: FRAG,
       uniforms: {
         uTime: { value: 0 },
-        uResolution: { value: [ctn.offsetWidth, ctn.offsetHeight] },
+        uResolution: { value: [initWidth, initHeight] },
         uColors: { value: buildPalette(propsRef.current.colors) },
         uColorCount: { value: Math.min(propsRef.current.colors.length, MAX_COLORS) },
         uStrandCount: { value: Math.min(propsRef.current.count, MAX_STRANDS) },
@@ -305,8 +319,8 @@ export default function Strands({
     const mesh = new Mesh(gl, { geometry, program });
 
     const renderTarget = new RenderTarget(gl, {
-      width: ctn.offsetWidth,
-      height: ctn.offsetHeight
+      width: initWidth,
+      height: initHeight
     });
 
     const glassProgram = new Program(gl, {
@@ -314,7 +328,7 @@ export default function Strands({
       fragment: GLASS_FRAG,
       uniforms: {
         uScene: { value: renderTarget.texture },
-        uResolution: { value: [ctn.offsetWidth, ctn.offsetHeight] },
+        uResolution: { value: [initWidth, initHeight] },
         uRadius: { value: 0.46 * glassSize },
         uRefraction: { value: refraction },
         uDispersion: { value: dispersion }
@@ -326,8 +340,8 @@ export default function Strands({
 
     function resize() {
       if (!ctn) return;
-      const width = ctn.offsetWidth;
-      const height = ctn.offsetHeight;
+      const width = ctn.offsetWidth || 1;
+      const height = ctn.offsetHeight || 1;
       renderer.setSize(width, height);
       program.uniforms.uResolution.value = [width, height];
       renderTarget.setSize(width, height);
