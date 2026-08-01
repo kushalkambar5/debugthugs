@@ -54,6 +54,8 @@ router.post('/login', async (req, res) => {
         email: user.email,
         fullName: user.fullName,
         role: user.role,
+        onboardingComplete: user.onboardingComplete,
+        profileImageUrl: user.profileImageUrl,
       },
     });
   } catch (err) {

@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 
 // Base URL for model predictions
-const MODELS_URL = process.env.NEXT_PUBLIC_MODELS_URL || "http://localhost:8000";
+const MODELS_URL = "/api/models";
 
 // Interface Definitions
 interface PredictionResult {

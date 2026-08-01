@@ -1,9 +1,5 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { db } from "@/lib/db";
-import { users } from "@/lib/schema";
-import { eq } from "drizzle-orm";
-import bcrypt from "bcryptjs";
 import { AuthOptions } from "next-auth";
 
 export const authOptions: AuthOptions = {
@@ -19,23 +15,23 @@ export const authOptions: AuthOptions = {
           throw new Error("Please enter both email and password.");
         }
 
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, credentials.email.toLowerCase()));
+        const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:5000";
+        const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: credentials.email,
+            password: credentials.password,
+          }),
+        });
 
-        if (!user) {
-          throw new Error("No account found with this email.");
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Invalid email or password.");
         }
 
-        const isPasswordCorrect = await bcrypt.compare(
-          credentials.password,
-          user.passwordHash
-        );
-
-        if (!isPasswordCorrect) {
-          throw new Error("Incorrect password.");
-        }
+        const data = await res.json();
+        const user = data.user;
 
         return {
           id: user.id,

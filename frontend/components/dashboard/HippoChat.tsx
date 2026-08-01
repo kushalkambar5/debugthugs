@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 
-const CHATBOT_URL = process.env.NEXT_PUBLIC_CHATBOT_URL || "http://localhost:8001";
+const CHATBOT_URL = "/api/chatbot";
 
 interface Message {
   id: string;
