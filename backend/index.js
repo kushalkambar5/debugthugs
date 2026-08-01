@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import authRoutes from './src/routes/auth.js';
 import healthRoutes from './src/routes/health.js';
+import uploadRoutes from './src/routes/upload.js';
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.get('/', (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/health', healthRoutes);
+app.use('/api/upload', uploadRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);

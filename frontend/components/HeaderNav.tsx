@@ -6,12 +6,14 @@ import Link from "next/link";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import SpecularButton from "@/components/SpecularButton";
 import { useSession, signOut } from "next-auth/react";
+import { ProfileModal } from "@/components/ProfileModal";
 
 
 export function HeaderNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: session, status } = useSession();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
 
 
   return (
@@ -120,11 +122,22 @@ export function HeaderNav() {
                   <Link
                     href="/dashboard"
                     onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#8C6B1F] hover:bg-[#FAF6E8] rounded-lg transition-colors border-b border-[#E8E2D4]/50 mb-1"
+                    className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#8C6B1F] hover:bg-[#FAF6E8] rounded-lg transition-colors"
                   >
                     <MaterialIcon name="dashboard" className="text-sm" />
                     <span>My Dashboard</span>
                   </Link>
+
+                  <button
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      setProfileModalOpen(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#8C6B1F] hover:bg-[#FAF6E8] rounded-lg transition-colors border-b border-[#E8E2D4]/50 mb-1 cursor-pointer text-left"
+                  >
+                    <MaterialIcon name="photo_camera" className="text-sm" />
+                    <span>Change Profile Photo</span>
+                  </button>
 
                   <button
                     onClick={() => {
@@ -313,6 +326,12 @@ export function HeaderNav() {
           </div>
         </div>
       )}
+
+      {/* Cloudflare R2 Profile Upload Modal */}
+      <ProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+      />
     </header>
   );
 }

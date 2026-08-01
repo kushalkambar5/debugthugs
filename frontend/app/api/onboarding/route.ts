@@ -4,8 +4,7 @@ import { authOptions } from "../auth/[...nextauth]/route";
 import { db } from "@/lib/db";
 import { users, doctorProfiles, doctorPatients } from "@/lib/schema";
 import { eq } from "drizzle-orm";
-import { promises as fs } from "fs";
-import path from "path";
+import { uploadToR2 } from "@/lib/r2";
 
 export async function POST(req: Request) {
   try {
@@ -32,22 +31,19 @@ export async function POST(req: Request) {
     const weightKg = formData.get("weightKg") as string;
     const emergencyContact = formData.get("emergencyContact") as string;
     
-    // Image handling
+    // Image handling via Cloudflare R2
     const profileImageFile = formData.get("profileImage") as File | null;
     const defaultIcon = formData.get("defaultIcon") as string;
     let profileImageUrl = defaultIcon || "/avatars/avatar1.png";
 
     if (profileImageFile && profileImageFile.size > 0 && typeof profileImageFile !== "string") {
       const bytes = await profileImageFile.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-
-      const uploadDir = path.join(process.cwd(), "public", "uploads");
-      await fs.mkdir(uploadDir, { recursive: true });
-
-      const sanitizedFilename = `${Date.now()}-${profileImageFile.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-      const filePath = path.join(uploadDir, sanitizedFilename);
-      await fs.writeFile(filePath, buffer);
-      profileImageUrl = `/uploads/${sanitizedFilename}`;
+      profileImageUrl = await uploadToR2(
+        bytes,
+        profileImageFile.name,
+        profileImageFile.type || "image/jpeg",
+        "profile-images"
+      );
     }
 
     // Get current role of the user (or read from session)

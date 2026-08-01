@@ -43,6 +43,7 @@ export const authOptions: AuthOptions = {
           name: user.fullName,
           role: user.role,
           onboardingComplete: !!user.onboardingComplete,
+          image: user.profileImageUrl || null,
         };
       },
     }),
@@ -53,12 +54,14 @@ export const authOptions: AuthOptions = {
         token.id = user.id;
         token.role = user.role;
         token.onboardingComplete = user.onboardingComplete;
+        token.picture = (user as any).image || (user as any).picture || null;
       }
       
       if (trigger === "update" && session) {
-        token.onboardingComplete = session.onboardingComplete;
+        if (session.onboardingComplete !== undefined) token.onboardingComplete = session.onboardingComplete;
         if (session.name) token.name = session.name;
         if (session.picture) token.picture = session.picture;
+        if (session.image) token.picture = session.image;
       }
       return token;
     },
@@ -67,6 +70,7 @@ export const authOptions: AuthOptions = {
         session.user.id = token.id;
         session.user.role = token.role;
         session.user.onboardingComplete = !!token.onboardingComplete;
+        session.user.image = (token.picture as string) || (token.image as string) || null;
       }
       return session;
     },
