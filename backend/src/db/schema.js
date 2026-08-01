@@ -85,11 +85,12 @@ export const medicalReports = pgTable('medical_reports', {
   description: text('description'),
   reportType: reportTypeEnum('report_type'),
   fileUrl: varchar('file_url', { length: 512 }),
-  cloudinaryPublicId: varchar('cloudinary_public_id', { length: 255 }),
+  r2Key: varchar('r2_key', { length: 255 }),
   fileType: varchar('file_type', { length: 50 }), // pdf | image | dicom
   extractedData: jsonb('extracted_data'),
   aiSummary: jsonb('ai_summary'),
   affectedParts: integer('affected_parts').array(),
+  medicines: text('medicines').array(),
   reportDate: date('report_date'),
   uploadedAt: timestamp('uploaded_at').defaultNow().notNull(),
 });
@@ -119,12 +120,13 @@ export const diseaseScans = pgTable('disease_scans', {
   patientId: uuid('patient_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   scanType: scanTypeEnum('scan_type').notNull(),
   inputImageUrl: varchar('input_image_url', { length: 512 }),
-  cloudinaryPublicId: varchar('cloudinary_public_id', { length: 255 }),
+  r2Key: varchar('r2_key', { length: 255 }),
   modelInputMetadata: jsonb('model_input_metadata'),
   predictionResult: jsonb('prediction_result'),
   status: scanStatusEnum('status').default('PENDING'),
   aiExplanation: text('ai_explanation'),
   affectedParts: integer('affected_parts').array(),
+  medicines: text('medicines').array(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   completedAt: timestamp('completed_at'),
 });
