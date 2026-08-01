@@ -18,6 +18,10 @@ import {
   insertRecords,
   SdkAvailabilityStatus,
 } from 'react-native-health-connect';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import LoginScreen from './LoginScreen';
+
+const API_BASE = 'https://daringly-openchain-caden.ngrok-free.dev';
 
 // Permissions list mapping to the 14 data types requested
 const PERMISSIONS = [
@@ -39,18 +43,91 @@ const PERMISSIONS = [
   { accessType: 'read', recordType: 'BloodPressure' },
 ] as const;
 
+interface User {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+}
+
 function App() {
+  // ─── Auth state ───────────────────────────────────────────────────────────
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
+
+  // ─── Health Connect state ─────────────────────────────────────────────────
   const [sdkStatus, setSdkStatus] = useState<string>('Checking...');
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [fetchedData, setFetchedData] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
+  // ─── Restore session on startup ───────────────────────────────────────────
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const token = await AsyncStorage.getItem('auth_token');
+        const userStr = await AsyncStorage.getItem('auth_user');
+        if (token && userStr) {
+          const user: User = JSON.parse(userStr);
+          setAuthToken(token);
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+        }
+      } catch (e) {
+        // Session restore failed — show login
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+    restoreSession();
+  }, []);
+
+  // ─── Health Connect init after login ──────────────────────────────────────
+  useEffect(() => {
+    if (isAuthenticated) {
+      checkSdkAndInit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
+  // ─── Auth Handlers ────────────────────────────────────────────────────────
+  const handleLoginSuccess = (token: string, user: User) => {
+    setAuthToken(token);
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = async () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          await AsyncStorage.removeItem('auth_token');
+          await AsyncStorage.removeItem('auth_user');
+          setAuthToken(null);
+          setCurrentUser(null);
+          setIsAuthenticated(false);
+          setFetchedData({});
+          setLogs([]);
+          setIsInitialized(false);
+        },
+      },
+    ]);
+  };
+
+  // ─── Logging ──────────────────────────────────────────────────────────────
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
     setLogs((prev) => [`[${timestamp}] ${message}`, ...prev.slice(0, 49)]);
   };
 
+  // ─── Health Connect helpers ───────────────────────────────────────────────
   const get7DaysAgoRange = () => {
     const endTime = new Date();
     const startTime = new Date();
@@ -230,20 +307,88 @@ function App() {
     setIsLoading(false);
   };
 
-  useEffect(() => {
-    checkSdkAndInit();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // ─── Sync to DB ───────────────────────────────────────────────────────────
+  const syncToDatabase = async () => {
+    if (Object.keys(fetchedData).length === 0) {
+      Alert.alert('No Data', 'Please fetch health data first before syncing.');
+      return;
+    }
 
+    setIsSyncing(true);
+    addLog('Syncing health data to database...');
+
+    try {
+      const response = await fetch(`${API_BASE}/api/health/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ healthData: fetchedData }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        addLog(`Sync failed: ${result.error}`);
+        Alert.alert('Sync Failed', result.error || 'Something went wrong during sync.');
+        return;
+      }
+
+      addLog(`✅ Sync successful: ${result.message}`);
+      Alert.alert('Sync Complete 🎉', result.message);
+    } catch (err: any) {
+      addLog(`Sync error: ${err.message}`);
+      Alert.alert('Sync Error', 'Could not connect to server. Check your connection.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // ─── Loading screen while restoring session ───────────────────────────────
+  if (authLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <StatusBar barStyle="light-content" backgroundColor="#0a0a0f" />
+        <ActivityIndicator size="large" color="#4361ee" />
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
+
+  // ─── Login screen ─────────────────────────────────────────────────────────
+  if (!isAuthenticated) {
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // ─── Main App ─────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#121212" />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Health Connect App</Text>
-        <Text style={styles.headerSub}>Unified Health & Fitness Data Viewer</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>Health Connect App</Text>
+          <Text style={styles.headerSub}>Unified Health &amp; Fitness Data Viewer</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <Text style={styles.userGreeting} numberOfLines={1}>
+            👤 {currentUser?.fullName?.split(' ')[0] || currentUser?.email}
+          </Text>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <Text style={styles.logoutText}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* User Info Banner */}
+        <View style={styles.userBanner}>
+          <Text style={styles.userBannerText}>
+            ✅ Signed in as <Text style={styles.userBannerEmail}>{currentUser?.email}</Text>
+          </Text>
+          <Text style={styles.userBannerRole}>Role: {currentUser?.role}</Text>
+        </View>
+
         {/* Connection status section */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Status</Text>
@@ -283,14 +428,28 @@ function App() {
           </View>
         </View>
 
-        {/* Fetch data actions */}
+        {/* Fetch + Sync actions */}
         <TouchableOpacity style={styles.buttonFetch} onPress={fetchHealthData} disabled={isLoading}>
           {isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.buttonFetchText}>Fetch Last 7 Days Data</Text>
+            <Text style={styles.buttonFetchText}>📊 Fetch Last 7 Days Data</Text>
           )}
         </TouchableOpacity>
+
+        {/* Sync to DB button — only visible when data is fetched */}
+        {Object.keys(fetchedData).length > 0 && (
+          <TouchableOpacity
+            style={[styles.buttonSync, isSyncing && styles.buttonSyncDisabled]}
+            onPress={syncToDatabase}
+            disabled={isSyncing}>
+            {isSyncing ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonSyncText}>☁️ Sync to Database</Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         {/* Display Fetched Data */}
         <View style={styles.card}>
@@ -344,29 +503,100 @@ function App() {
 }
 
 const styles = StyleSheet.create({
+  // ── Loading ──
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#0a0a0f',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    color: '#6b7280',
+    fontSize: 14,
+  },
+  // ── Main App ──
   container: {
     flex: 1,
     backgroundColor: '#121212',
   },
   header: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#2b2b2b',
     backgroundColor: '#1a1a1a',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
+    alignItems: 'flex-end',
+    maxWidth: 140,
   },
   headerTitle: {
     color: '#ffffff',
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
   },
   headerSub: {
     color: '#a0a0a0',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  userGreeting: {
+    color: '#c0c0d0',
     fontSize: 12,
-    marginTop: 4,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  logoutButton: {
+    backgroundColor: '#2a1a1a',
+    borderWidth: 1,
+    borderColor: '#f87171',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  logoutText: {
+    color: '#f87171',
+    fontSize: 11,
+    fontWeight: '600',
   },
   scrollContent: {
     padding: 12,
   },
+  // ── User Banner ──
+  userBanner: {
+    backgroundColor: '#0d2b0d',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#1a4d1a',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  userBannerText: {
+    color: '#86efac',
+    fontSize: 13,
+    flex: 1,
+  },
+  userBannerEmail: {
+    fontWeight: 'bold',
+    color: '#4ade80',
+  },
+  userBannerRole: {
+    color: '#4ade80',
+    fontSize: 11,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  // ── Cards ──
   card: {
     backgroundColor: '#1a1a1a',
     borderRadius: 8,
@@ -405,6 +635,7 @@ const styles = StyleSheet.create({
   statusErr: {
     color: '#f44336',
   },
+  // ── Buttons ──
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -449,6 +680,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  buttonSync: {
+    backgroundColor: '#0ea5e9',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  buttonSyncDisabled: {
+    opacity: 0.6,
+  },
+  buttonSyncText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  // ── Records ──
   noDataText: {
     color: '#888888',
     fontSize: 14,
@@ -487,6 +741,7 @@ const styles = StyleSheet.create({
     color: '#777777',
     fontSize: 12,
   },
+  // ── Log viewer ──
   logContainer: {
     backgroundColor: '#000000',
     padding: 8,

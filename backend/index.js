@@ -1,16 +1,26 @@
 import express from 'express';
 import dotenv from 'dotenv';
+import cors from 'cors';
+import authRoutes from './src/routes/auth.js';
+import healthRoutes from './src/routes/health.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Middleware
+app.use(cors());
 app.use(express.json());
 
+// Health check
 app.get('/', (req, res) => {
   res.send('Backend server is running');
 });
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/health', healthRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
