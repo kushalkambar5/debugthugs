@@ -283,6 +283,7 @@
 
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 28px; }
+        .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; }
         .grid-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
 
         .icon-box {
@@ -300,7 +301,7 @@
             background: #FAF6E8;
             border: 1px solid rgba(23, 23, 23, 0.08);
             border-radius: 18px;
-            padding: 24px 20px;
+            padding: 20px 14px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -317,8 +318,8 @@
         }
 
         .tech-icon {
-            width: 44px;
-            height: 44px;
+            width: 48px;
+            height: 48px;
             object-fit: contain;
         }
 
@@ -946,77 +947,83 @@
                     </div>
                 </div>
 
-                <div class="grid-6 reveal" style="margin-top: 10px;">
+                <div class="grid-5 reveal" style="margin-top: 10px;">
                     <div class="tech-logo-card">
-                        <svg class="tech-icon" viewBox="0 0 180 180" fill="none"><circle cx="90" cy="90" r="90" fill="#000"/><path d="M149.508 157.52L69.142 54H54v72h14.4v-49.888l70.732 91.564a90.285 90.285 0 0010.376-10.156z" fill="#FFF"/><path d="M126 54h14.4v72H126V54z" fill="#FFF"/></svg>
+                        <img src="logos/nextjs.png" class="tech-icon" alt="Next.js">
                         <div style="font-weight: 800; font-size: 16px; color: #171717;">Next.js 15</div>
                         <div class="mono-tag" style="color: #666053; font-size: 11px;">Web Framework</div>
                     </div>
 
                     <div class="tech-logo-card">
-                        <svg class="tech-icon" viewBox="0 0 100 100" fill="none"><ellipse cx="50" cy="50" rx="42" ry="16" stroke="#61DAFB" stroke-width="4" transform="rotate(30 50 50)"/><ellipse cx="50" cy="50" rx="42" ry="16" stroke="#61DAFB" stroke-width="4" transform="rotate(90 50 50)"/><ellipse cx="50" cy="50" rx="42" ry="16" stroke="#61DAFB" stroke-width="4" transform="rotate(150 50 50)"/><circle cx="50" cy="50" r="7" fill="#61DAFB"/></svg>
+                        <img src="logos/React-icon.svg.webp" class="tech-icon" alt="React">
                         <div style="font-weight: 800; font-size: 16px; color: #171717;">React & Mobile</div>
                         <div class="mono-tag" style="color: #666053; font-size: 11px;">React 19 & React Native</div>
                     </div>
 
                     <div class="tech-logo-card">
-                        <svg class="tech-icon" viewBox="0 0 100 100" fill="none"><path d="M50 15C30 15 15 35 15 55c0 25 25 30 35 30s35-5 35-30c0-20-15-40-35-40z" fill="#38BDF8"/><path d="M30 45c10-10 25-10 35 0 10 10 10 25 0 35" stroke="#FFF" stroke-width="6" stroke-linecap="round"/></svg>
+                        <img src="logos/Tailwind_CSS_Logo.svg.webp" class="tech-icon" alt="Tailwind CSS">
                         <div style="font-weight: 800; font-size: 16px; color: #171717;">Tailwind CSS v4</div>
                         <div class="mono-tag" style="color: #666053; font-size: 11px;">Design Tokens</div>
                     </div>
 
                     <div class="tech-logo-card">
-                        <svg class="tech-icon" viewBox="0 0 100 100" fill="none"><path d="M50 10L15 30v40l35 20 35-20V30L50 10z" fill="#5FA04E"/><path d="M50 25L27 38v24l23 13 23-13V38L50 25z" fill="#FFF"/></svg>
+                        <img src="logos/Node.js_logo.svg.webp" class="tech-icon" alt="Node.js">
                         <div style="font-weight: 800; font-size: 16px; color: #171717;">Node.js & Express</div>
                         <div class="mono-tag" style="color: #666053; font-size: 11px;">Central API Server</div>
                     </div>
 
                     <div class="tech-logo-card">
-                        <svg class="tech-icon" viewBox="0 0 100 100" fill="none"><path d="M50 10L10 85h80L50 10z" fill="#3776AB"/><path d="M50 35L30 70h40L50 35z" fill="#FFD43B"/></svg>
+                        <img src="logos/fastapi.svg" class="tech-icon" alt="FastAPI">
                         <div style="font-weight: 800; font-size: 16px; color: #171717;">Python & FastAPI</div>
                         <div class="mono-tag" style="color: #666053; font-size: 11px;">AI Model Engine</div>
                     </div>
 
                     <div class="tech-logo-card">
-                        <svg class="tech-icon" viewBox="0 0 100 100" fill="none"><path d="M50 15l25 45H25L50 15z" fill="#EE4C2C"/><circle cx="50" cy="75" r="10" fill="#EE4C2C"/></svg>
+                        <img src="logos/Pytorch_logo.png" class="tech-icon" alt="PyTorch">
                         <div style="font-weight: 800; font-size: 16px; color: #171717;">PyTorch & YOLOv11</div>
                         <div class="mono-tag" style="color: #666053; font-size: 11px;">Computer Vision ML</div>
                     </div>
 
                     <div class="tech-logo-card">
-                        <svg class="tech-icon" viewBox="0 0 100 100" fill="none"><rect x="15" y="15" width="70" height="70" rx="16" fill="#336791"/><path d="M35 40c10-10 30-10 30 10s-20 20-30 0" stroke="#FFF" stroke-width="6" stroke-linecap="round"/></svg>
+                        <img src="logos/xg_boost.png" class="tech-icon" alt="XGBoost">
+                        <div style="font-weight: 800; font-size: 16px; color: #171717;">XGBoost ML</div>
+                        <div class="mono-tag" style="color: #666053; font-size: 11px;">Tabular Risk Models</div>
+                    </div>
+
+                    <div class="tech-logo-card">
+                        <img src="logos/Postgresql_elephant.svg.webp" class="tech-icon" alt="PostgreSQL">
                         <div style="font-weight: 800; font-size: 16px; color: #171717;">PostgreSQL & Drizzle</div>
                         <div class="mono-tag" style="color: #666053; font-size: 11px;">Relational DB & ORM</div>
                     </div>
 
                     <div class="tech-logo-card">
-                        <svg class="tech-icon" viewBox="0 0 100 100" fill="none"><path d="M20 60c0-15 12-25 25-25 5-10 15-15 25-10 12 5 15 18 15 25 8 2 12 8 10 15H20z" fill="#F38020"/></svg>
+                        <img src="logos/Cloudflare_Logo.png" class="tech-icon" alt="Cloudflare">
                         <div style="font-weight: 800; font-size: 16px; color: #171717;">Cloudflare R2</div>
-                        <div class="mono-tag" style="color: #666053; font-size: 11px;">Encrypted Object Storage</div>
+                        <div class="mono-tag" style="color: #666053; font-size: 11px;">Encrypted Storage</div>
                     </div>
 
                     <div class="tech-logo-card">
-                        <svg class="tech-icon" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="40" fill="#10B981"/><path d="M35 50l10 10 20-20" stroke="#FFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <img src="logos/google_health_connect.png" class="tech-icon" alt="Google Health Connect">
                         <div style="font-weight: 800; font-size: 16px; color: #171717;">Google Health Connect</div>
                         <div class="mono-tag" style="color: #666053; font-size: 11px;">Android Wearable SDK</div>
                     </div>
 
                     <div class="tech-logo-card">
-                        <svg class="tech-icon" viewBox="0 0 100 100" fill="none"><rect x="15" y="15" width="70" height="70" rx="20" fill="#7C3AED"/><path d="M35 35h30v30H35z" fill="#FFF"/></svg>
-                        <div style="font-weight: 800; font-size: 16px; color: #171717;">MedGemma & LibreChat</div>
-                        <div class="mono-tag" style="color: #666053; font-size: 11px;">Local Clinical LLMs</div>
+                        <img src="logos/medgemma.png" class="tech-icon" alt="MedGemma">
+                        <div style="font-weight: 800; font-size: 16px; color: #171717;">MedGemma</div>
+                        <div class="mono-tag" style="color: #666053; font-size: 11px;">Local Clinical LLM</div>
                     </div>
 
                     <div class="tech-logo-card">
-                        <svg class="tech-icon" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="38" fill="#171717"/><path d="M30 50h40M50 30v40" stroke="#F4E071" stroke-width="8" stroke-linecap="round"/></svg>
-                        <div style="font-weight: 800; font-size: 16px; color: #171717;">DeepSeek / OpenCode</div>
+                        <img src="logos/librechat.png" class="tech-icon" alt="LibreChat">
+                        <div style="font-weight: 800; font-size: 16px; color: #171717;">LibreChat</div>
+                        <div class="mono-tag" style="color: #666053; font-size: 11px;">Conversational AI</div>
+                    </div>
+
+                    <div class="tech-logo-card">
+                        <img src="logos/Deepseek-logo-icon.svg.webp" class="tech-icon" alt="DeepSeek">
+                        <div style="font-weight: 800; font-size: 16px; color: #171717;">DeepSeek R1</div>
                         <div class="mono-tag" style="color: #666053; font-size: 11px;">Clinical Reasoning API</div>
-                    </div>
-
-                    <div class="tech-logo-card">
-                        <svg class="tech-icon" viewBox="0 0 100 100" fill="none"><rect x="15" y="15" width="70" height="70" rx="16" fill="#10B981"/><path d="M35 50l12 12 20-24" stroke="#FFF" stroke-width="6" stroke-linecap="round"/></svg>
-                        <div style="font-weight: 800; font-size: 16px; color: #171717;">XGBoost & TorchXRay</div>
-                        <div class="mono-tag" style="color: #666053; font-size: 11px;">Tabular & Chest AI</div>
                     </div>
                 </div>
             </section>
