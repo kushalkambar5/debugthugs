@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
@@ -9,8 +9,6 @@ import { useSession, signOut } from "next-auth/react";
 import { ProfileModal } from "@/components/ProfileModal";
 import { usePathname } from "next/navigation";
 import { ConnectionSettingsModal } from "@/components/ConnectionSettingsModal";
-import { useEffect } from "react";
-
 
 export function HeaderNav() {
   const pathname = usePathname();
@@ -57,94 +55,96 @@ export function HeaderNav() {
     return () => window.removeEventListener("connection-settings-updated", checkTunnels);
   }, []);
 
+  const navLinks = [
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/visualize-body", label: "Visualize Body" },
+    { href: "/detect-disease", label: "Detect Disease" },
+    { href: "/chat-with-hippo", label: "Chat with Hippo" },
+    { href: "/health-metrics", label: "Health Metrics" },
+    ...(session?.user?.role === "PATIENT"
+      ? [{ href: "/tasks-diet", label: "Tasks & Diet" }]
+      : []),
+    { href: "/medical-history", label: "Medical History" },
+    { href: "/chat", label: "Clinical Chat" },
+    ...(session?.user?.role === "PATIENT"
+      ? [{ href: "/manage-doctors", label: "Manage Doctors" }]
+      : []),
+  ];
+
+  const publicLinks = [
+    { href: "#core-services", label: "Core Services" },
+    { href: "#interactive-showcase", label: "Live AI Demos" },
+    { href: "#diagnostic-suite", label: "Diagnostic AI" },
+    { href: "#doctor-portal", label: "Doctor Verification" },
+    { href: "#medical-team", label: "Our Experts" },
+    { href: "#reviews", label: "Reviews" },
+  ];
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-[#F6F4EF]/90 backdrop-blur-md border-b border-[#E6E1D3]/60 transition-all">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+    <header className="sticky top-0 z-50 w-full bg-[#F6F4EF]/90 dark:bg-[#141311]/90 backdrop-blur-md border-b border-[#E6E1D3]/60 dark:border-zinc-800/80 transition-all">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 lg:gap-4">
         {/* Brand Logo */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-[#FAF6E8] p-1 shadow-sm border border-[#E8E2CF] group-hover:scale-105 transition-transform">
+        <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+          <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-[#FAF6E8] dark:bg-zinc-800 p-0.5 shadow-xs border border-[#E8E2CF] dark:border-zinc-700 group-hover:scale-105 transition-transform">
             <Image
               src="/logo.png"
               alt="Hippo Health Logo"
               fill
-              className="object-contain p-1"
+              className="object-contain p-0.5"
               priority
             />
           </div>
           <div className="flex flex-col">
-            <span className="font-serif text-2xl font-bold tracking-tight text-[#1C1B18] leading-none">
-              Hippo<span className="text-[#8C6B1F]">Health</span>
+            <span className="font-serif text-xl font-bold tracking-tight text-[#1C1B18] dark:text-zinc-100 leading-none">
+              Hippo<span className="text-[#8C6B1F] dark:text-[#D4AF37]">Health</span>
             </span>
-            <span className="text-[10px] font-sans font-medium tracking-widest text-[#787363] uppercase mt-0.5">
+            <span className="text-[9px] font-sans font-semibold tracking-wider text-[#787363] dark:text-zinc-400 uppercase mt-0.5">
               Precision Clinical AI
             </span>
           </div>
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-8">
-          {status === "authenticated" && (
-            <>
-<>
-  <Link href="/dashboard" className={`text-sm font-sans transition-colors ${pathname === "/dashboard" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#4D493E] hover:text-[#1C1B18]"}`}>
-    Dashboard
-  </Link>
-  <Link href="/visualize-body" className={`text-sm font-sans transition-colors ${pathname === "/visualize-body" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#4D493E] hover:text-[#1C1B18]"}`}>
-    Visualize Body
-  </Link>
-  <Link href="/detect-disease" className={`text-sm font-sans transition-colors ${pathname === "/detect-disease" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#4D493E] hover:text-[#1C1B18]"}`}>
-    Detect Disease
-  </Link>
-  <Link href="/chat-with-hippo" className={`text-sm font-sans transition-colors ${pathname === "/chat-with-hippo" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#4D493E] hover:text-[#1C1B18]"}`}>
-    Chat with Hippo
-  </Link>
-  <Link href="/health-metrics" className={`text-sm font-sans transition-colors ${pathname === "/health-metrics" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#4D493E] hover:text-[#1C1B18]"}`}>
-    Health Metrics
-  </Link>
-  {session?.user?.role === "PATIENT" && (
-    <Link href="/tasks-diet" className={`text-sm font-sans transition-colors flex items-center gap-1 ${pathname === "/tasks-diet" ? "font-bold text-emerald-700" : "font-medium text-[#4D493E] hover:text-emerald-700"}`}>
-      Tasks & Diet
-    </Link>
-  )}
-  <Link href="/medical-history" className={`text-sm font-sans transition-colors ${pathname === "/medical-history" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#4D493E] hover:text-[#1C1B18]"}`}>
-    Medical History
-  </Link>
-  <Link href="/chat" className={`text-sm font-sans transition-colors flex items-center gap-1 ${pathname === "/chat" ? "font-bold text-[#1C5396]" : "font-medium text-[#4D493E] hover:text-[#1C5396]"}`}>
-    Clinical Chat
-  </Link>
-  {session?.user?.role === "PATIENT" && (
-    <Link href="/manage-doctors" className={`text-sm font-sans transition-colors ${pathname === "/manage-doctors" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#4D493E] hover:text-[#1C1B18]"}`}>
-      Manage Doctors
-    </Link>
-  )}
-</>
-            </>
-          )}
-          {/* Keep original links for unauthenticated users */}
-          {status !== "authenticated" && (
-            <>
-              <Link href="#core-services" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">Core Services</Link>
-              <Link href="#interactive-showcase" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors flex items-center gap-1">Live AI Demos</Link>
-              <Link href="#diagnostic-suite" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">Diagnostic AI</Link>
-              <Link href="#doctor-portal" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">Doctor Verification</Link>
-              <Link href="#medical-team" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">Our Experts</Link>
-              <Link href="#reviews" className="text-sm font-sans font-medium text-[#4D493E] hover:text-[#1C1B18] transition-colors">Reviews</Link>
-            </>
-          )}
+        <nav className="hidden md:flex items-center gap-0.5 lg:gap-1 xl:gap-1.5 py-1">
+          {status === "authenticated"
+            ? navLinks.map((link) => {
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`whitespace-nowrap px-2 py-1 lg:px-2.5 lg:py-1.5 xl:px-3 text-[11px] lg:text-xs xl:text-[13px] rounded-lg transition-all font-sans ${
+                      isActive
+                        ? "font-semibold bg-[#8C6B1F]/12 dark:bg-[#D4AF37]/20 text-[#8C6B1F] dark:text-[#F0D580] shadow-xs border border-[#8C6B1F]/20 dark:border-[#D4AF37]/30"
+                        : "font-medium text-[#4D493E] dark:text-zinc-300 hover:text-[#1C1B18] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 border border-transparent"
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })
+            : publicLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="whitespace-nowrap px-2 py-1 lg:px-2.5 lg:py-1.5 xl:px-3 text-[11px] lg:text-xs xl:text-[13px] font-medium text-[#4D493E] dark:text-zinc-300 hover:text-[#1C1B18] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-all font-sans"
+                >
+                  {link.label}
+                </Link>
+              ))}
         </nav>
 
         {/* Right CTA Actions */}
-        <div className="hidden md:flex items-center gap-3 relative">
+        <div className="hidden md:flex items-center gap-2 shrink-0 relative">
           {/* Connection settings toggle */}
           <button
             onClick={() => setSettingsOpen(true)}
             title={tunnelsActive ? "Custom API Tunnels Active" : "Configure API Connection Tunnels"}
-            className={`w-10 h-10 rounded-full border border-[#DCD5C5] bg-white flex items-center justify-center hover:bg-[#FAF6E8] transition-all cursor-pointer relative ${
-              tunnelsActive ? "text-[#8C6B1F] border-[#8C6B1F]/30" : "text-[#787363]"
+            className={`w-9 h-9 rounded-full border border-[#DCD5C5] dark:border-zinc-700 bg-white dark:bg-zinc-800 flex items-center justify-center hover:bg-[#FAF6E8] dark:hover:bg-zinc-700 transition-all cursor-pointer relative ${
+              tunnelsActive ? "text-[#8C6B1F] dark:text-[#D4AF37] border-[#8C6B1F]/40" : "text-[#787363] dark:text-zinc-400"
             }`}
           >
-            <MaterialIcon name="api" className="text-xl" />
+            <MaterialIcon name="api" className="text-lg" />
             {tunnelsActive && (
               <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -157,12 +157,12 @@ export function HeaderNav() {
           <button
             onClick={toggleTheme}
             title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
-            className="w-10 h-10 rounded-full border border-[#DCD5C5] bg-white flex items-center justify-center hover:bg-[#FAF6E8] text-[#787363] transition-all cursor-pointer relative"
+            className="w-9 h-9 rounded-full border border-[#DCD5C5] dark:border-zinc-700 bg-white dark:bg-zinc-800 flex items-center justify-center hover:bg-[#FAF6E8] dark:hover:bg-zinc-700 text-[#787363] dark:text-zinc-300 transition-all cursor-pointer relative"
           >
             {theme === "light" ? (
-              <MaterialIcon name="dark_mode" className="text-xl" />
+              <MaterialIcon name="dark_mode" className="text-lg" />
             ) : (
-              <MaterialIcon name="light_mode" className="text-xl" />
+              <MaterialIcon name="light_mode" className="text-lg" />
             )}
           </button>
 
@@ -171,7 +171,7 @@ export function HeaderNav() {
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 aria-label="User Account"
-                className="w-10 h-10 rounded-full border border-[#DCD5C5] bg-white flex items-center justify-center text-[#1C1B18] hover:bg-[#FAF6E8] transition-colors shadow-xs cursor-pointer overflow-hidden relative"
+                className="w-9 h-9 rounded-full border border-[#DCD5C5] dark:border-zinc-700 bg-white dark:bg-zinc-800 flex items-center justify-center text-[#1C1B18] dark:text-zinc-200 hover:bg-[#FAF6E8] dark:hover:bg-zinc-700 transition-colors shadow-xs cursor-pointer overflow-hidden relative"
               >
                 {session.user.image || (session.user as any).picture ? (
                   <Image
@@ -181,20 +181,20 @@ export function HeaderNav() {
                     className="object-cover"
                   />
                 ) : (
-                  <MaterialIcon name="person" className="text-xl" />
+                  <MaterialIcon name="person" className="text-lg" />
                 )}
               </button>
 
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-[#E6E1D3] bg-[#FAF9F5] p-2.5 shadow-md z-50 animate-fade-in font-sans">
-                  <div className="px-3 py-2 border-b border-[#E8E2D4] mb-1.5">
-                    <p className="text-sm font-semibold text-[#1C1B18] truncate">
+                <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-[#E6E1D3] dark:border-zinc-700 bg-[#FAF9F5] dark:bg-zinc-900 p-2.5 shadow-lg z-50 animate-fade-in font-sans">
+                  <div className="px-3 py-2 border-b border-[#E8E2D4] dark:border-zinc-800 mb-1.5">
+                    <p className="text-sm font-semibold text-[#1C1B18] dark:text-zinc-100 truncate">
                       {session.user.name || "User"}
                     </p>
-                    <p className="text-xs text-[#787363] truncate">
+                    <p className="text-xs text-[#787363] dark:text-zinc-400 truncate">
                       {session.user.email}
                     </p>
-                    <span className="inline-block mt-1.5 px-2 py-0.5 text-[9px] font-bold tracking-wider text-[#8C6B1F] bg-[#FAF6E8] border border-[#E8E2CF] rounded-md uppercase">
+                    <span className="inline-block mt-1.5 px-2 py-0.5 text-[9px] font-bold tracking-wider text-[#8C6B1F] dark:text-[#D4AF37] bg-[#FAF6E8] dark:bg-zinc-800 border border-[#E8E2CF] dark:border-zinc-700 rounded-md uppercase">
                       {session.user.role || "PATIENT"}
                     </span>
                   </div>
@@ -203,7 +203,7 @@ export function HeaderNav() {
                     <Link
                       href="/onboarding"
                       onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#8C6B1F] hover:bg-[#FAF6E8] rounded-lg transition-colors"
+                      className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#8C6B1F] dark:text-[#D4AF37] hover:bg-[#FAF6E8] dark:hover:bg-zinc-800 rounded-lg transition-colors"
                     >
                       <MaterialIcon name="error" className="text-sm" />
                       <span>Complete Onboarding</span>
@@ -213,7 +213,7 @@ export function HeaderNav() {
                   <Link
                     href="/dashboard"
                     onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#8C6B1F] hover:bg-[#FAF6E8] rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#8C6B1F] dark:text-[#D4AF37] hover:bg-[#FAF6E8] dark:hover:bg-zinc-800 rounded-lg transition-colors"
                   >
                     <MaterialIcon name="dashboard" className="text-sm" />
                     <span>My Dashboard</span>
@@ -224,7 +224,7 @@ export function HeaderNav() {
                       setDropdownOpen(false);
                       setProfileModalOpen(true);
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#8C6B1F] hover:bg-[#FAF6E8] rounded-lg transition-colors border-b border-[#E8E2D4]/50 mb-1 cursor-pointer text-left"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#8C6B1F] dark:text-[#D4AF37] hover:bg-[#FAF6E8] dark:hover:bg-zinc-800 rounded-lg transition-colors border-b border-[#E8E2D4]/50 dark:border-zinc-800 mb-1 cursor-pointer text-left"
                   >
                     <MaterialIcon name="photo_camera" className="text-sm" />
                     <span>Change Profile Photo</span>
@@ -235,7 +235,7 @@ export function HeaderNav() {
                       setDropdownOpen(false);
                       signOut();
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#B34515] hover:bg-[#FAF0E6] rounded-lg transition-colors text-left cursor-pointer"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#B34515] dark:text-red-400 hover:bg-[#FAF0E6] dark:hover:bg-red-950/40 rounded-lg transition-colors text-left cursor-pointer"
                   >
                     <MaterialIcon name="logout" className="text-sm" />
                     <span>Sign Out</span>
@@ -247,7 +247,7 @@ export function HeaderNav() {
             <>
               <Link
                 href="/login"
-                className="px-4 py-2 text-xs font-semibold text-[#4D493E] hover:text-[#1C1B18] transition-colors font-sans"
+                className="px-3 py-1.5 text-xs font-semibold text-[#4D493E] dark:text-zinc-300 hover:text-[#1C1B18] dark:hover:text-white transition-colors font-sans"
               >
                 Sign In
               </Link>
@@ -267,11 +267,11 @@ export function HeaderNav() {
                 speed={0.4}
                 followMouse={true}
                 proximity={250}
-                className="px-5 py-2.5 text-xs font-semibold tracking-wide uppercase group font-sans"
+                className="px-4 py-2 text-xs font-semibold tracking-wide uppercase group font-sans"
               >
                 <span>Get Started</span>
-                <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-0.5 transition-transform">
-                  <MaterialIcon name="arrow_outward" className="text-sm text-white" />
+                <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-0.5 transition-transform">
+                  <MaterialIcon name="arrow_outward" className="text-xs text-white" />
                 </span>
               </SpecularButton>
             </>
@@ -284,12 +284,12 @@ export function HeaderNav() {
           <button
             onClick={toggleTheme}
             title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
-            className="p-2 rounded-lg text-[#787363] relative cursor-pointer"
+            className="p-2 rounded-lg text-[#787363] dark:text-zinc-300 relative cursor-pointer"
           >
             {theme === "light" ? (
-              <MaterialIcon name="dark_mode" className="text-2xl" />
+              <MaterialIcon name="dark_mode" className="text-xl" />
             ) : (
-              <MaterialIcon name="light_mode" className="text-2xl" />
+              <MaterialIcon name="light_mode" className="text-xl" />
             )}
           </button>
 
@@ -297,10 +297,10 @@ export function HeaderNav() {
             onClick={() => setSettingsOpen(true)}
             title="Configure Tunnels"
             className={`p-2 rounded-lg relative cursor-pointer ${
-              tunnelsActive ? "text-[#8C6B1F]" : "text-[#787363]"
+              tunnelsActive ? "text-[#8C6B1F] dark:text-[#D4AF37]" : "text-[#787363] dark:text-zinc-400"
             }`}
           >
-            <MaterialIcon name="api" className="text-2xl" />
+            <MaterialIcon name="api" className="text-xl" />
             {tunnelsActive && (
               <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -311,13 +311,13 @@ export function HeaderNav() {
 
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-lg text-[#1C1B18] hover:bg-[#EBE6D8]"
+            className="p-2 rounded-lg text-[#1C1B18] dark:text-zinc-100 hover:bg-[#EBE6D8] dark:hover:bg-zinc-800"
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? (
-              <MaterialIcon name="close" className="text-2xl" />
+              <MaterialIcon name="close" className="text-xl" />
             ) : (
-              <MaterialIcon name="menu" className="text-2xl" />
+              <MaterialIcon name="menu" className="text-xl" />
             )}
           </button>
         </div>
@@ -325,73 +325,39 @@ export function HeaderNav() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-[#F6F4EF] border-b border-[#E6E1D3] px-6 py-6 space-y-4">
-          <nav className="flex flex-col gap-4 text-base font-medium text-[#1C1B18]">
-            {/* Mobile Drawer Navigation Links */}
-            {status === "authenticated" && (
-              <>
-                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] ${pathname === "/dashboard" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#1C1B18]"}`}>
-                  Dashboard
-                </Link>
-                <Link href="/visualize-body" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] ${pathname === "/visualize-body" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#1C1B18]"}`}>
-                  Visualize Body
-                </Link>
-                <Link href="/detect-disease" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] ${pathname === "/detect-disease" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#1C1B18]"}`}>
-                  Detect Disease
-                </Link>
-                <Link href="/chat-with-hippo" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] flex items-center gap-2 ${pathname === "/chat-with-hippo" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#1C1B18]"}`}>
-                  Chat with Hippo
-                </Link>
-                <Link href="/health-metrics" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] ${pathname === "/health-metrics" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#1C1B18]"}`}>
-                  Health Metrics
-                </Link>
-                {session?.user?.role === "PATIENT" && (
-                  <Link href="/tasks-diet" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] flex items-center gap-1.5 ${pathname === "/tasks-diet" ? "font-bold text-emerald-700" : "font-medium text-[#1C1B18] hover:text-emerald-700"}`}>
-                    Tasks & Diet
+        <div className="md:hidden bg-[#F6F4EF] dark:bg-zinc-900 border-b border-[#E6E1D3] dark:border-zinc-800 px-6 py-6 space-y-4">
+          <nav className="flex flex-col gap-3 text-sm font-medium text-[#1C1B18] dark:text-zinc-200">
+            {status === "authenticated"
+              ? navLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`py-1.5 border-b border-[#E8E2D4] dark:border-zinc-800 ${
+                      pathname === link.href
+                        ? "font-bold text-[#8C6B1F] dark:text-[#D4AF37]"
+                        : "font-medium text-[#1C1B18] dark:text-zinc-200 hover:text-[#8C6B1F]"
+                    }`}
+                  >
+                    {link.label}
                   </Link>
-                )}
-                <Link href="/medical-history" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] ${pathname === "/medical-history" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#1C1B18]"}`}>
-                  Medical History
-                </Link>
-                <Link href="/chat" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] flex items-center gap-2 ${pathname === "/chat" ? "font-bold text-[#1C5396]" : "font-medium text-[#1C1B18] hover:text-[#1C5396]"}`}>
-                  Clinical Chat
-                </Link>
-                {session?.user?.role === "PATIENT" && (
-                  <Link href="/manage-doctors" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] ${pathname === "/manage-doctors" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#1C1B18]"}`}>
-                    Manage Doctors
+                ))
+              : publicLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-1.5 border-b border-[#E8E2D4] dark:border-zinc-800 text-[#1C1B18] dark:text-zinc-200"
+                  >
+                    {link.label}
                   </Link>
-                )}
-              </>
-            )}
-            {status !== "authenticated" && (
-              <>
-                <Link href="#core-services" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4]">
-                  Core Services
-                </Link>
-                <Link href="#interactive-showcase" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4] flex items-center gap-2">
-                  <MaterialIcon name="auto_awesome" className="text-lg text-[#C49A24]" />
-                  Live AI Demos
-                </Link>
-                <Link href="#diagnostic-suite" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4]">
-                  Diagnostic AI
-                </Link>
-                <Link href="#doctor-portal" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4]">
-                  Doctor Verification
-                </Link>
-                <Link href="#medical-team" onClick={() => setMobileMenuOpen(false)} className="py-1 border-b border-[#E8E2D4]">
-                  Our Experts
-                </Link>
-                <Link href="#reviews" onClick={() => setMobileMenuOpen(false)} className="py-1">
-                  Reviews
-                </Link>
-              </>
-            )}
+                ))}
           </nav>
-          <div className="pt-4 border-t border-[#E8E2D4] flex flex-col gap-3 font-sans">
+          <div className="pt-4 border-t border-[#E8E2D4] dark:border-zinc-800 flex flex-col gap-3 font-sans">
             {status === "authenticated" && session?.user ? (
               <>
                 <div className="flex items-center gap-3 py-1">
-                  <div className="relative w-10 h-10 rounded-full overflow-hidden bg-[#FAF6E8] border border-[#E6E1D3] shrink-0">
+                  <div className="relative w-9 h-9 rounded-full overflow-hidden bg-[#FAF6E8] dark:bg-zinc-800 border border-[#E6E1D3] dark:border-zinc-700 shrink-0">
                     {session.user.image || (session.user as any).picture ? (
                       <Image
                         src={session.user.image || (session.user as any).picture}
@@ -400,14 +366,14 @@ export function HeaderNav() {
                         className="object-cover"
                       />
                     ) : (
-                      <MaterialIcon name="person" className="text-xl" />
+                      <MaterialIcon name="person" className="text-lg text-[#1C1B18] dark:text-zinc-200" />
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-[#1C1B18] truncate">
+                    <p className="text-sm font-semibold text-[#1C1B18] dark:text-zinc-100 truncate">
                       {session.user.name || "User"}
                     </p>
-                    <p className="text-xs text-[#787363] truncate">
+                    <p className="text-xs text-[#787363] dark:text-zinc-400 truncate">
                       {session.user.email}
                     </p>
                   </div>
@@ -417,9 +383,9 @@ export function HeaderNav() {
                   <Link
                     href="/onboarding"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="py-2 text-sm font-semibold text-[#8C6B1F] flex items-center gap-2"
+                    className="py-2 text-xs font-semibold text-[#8C6B1F] dark:text-[#D4AF37] flex items-center gap-2"
                   >
-                    <MaterialIcon name="error" className="text-lg" />
+                    <MaterialIcon name="error" className="text-base" />
                     <span>Complete Onboarding</span>
                   </Link>
                 )}
@@ -427,9 +393,9 @@ export function HeaderNav() {
                 <Link
                   href="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="py-2 text-sm font-semibold text-[#8C6B1F] flex items-center gap-2 border-b border-[#E8E2D4]/50"
+                  className="py-2 text-xs font-semibold text-[#8C6B1F] dark:text-[#D4AF37] flex items-center gap-2 border-b border-[#E8E2D4]/50 dark:border-zinc-800"
                 >
-                  <MaterialIcon name="dashboard" className="text-lg" />
+                  <MaterialIcon name="dashboard" className="text-base" />
                   <span>My Dashboard</span>
                 </Link>
 
@@ -438,9 +404,9 @@ export function HeaderNav() {
                     setMobileMenuOpen(false);
                     signOut();
                   }}
-                  className="w-full py-2 text-sm font-semibold text-[#B34515] flex items-center gap-2 text-left cursor-pointer"
+                  className="w-full py-2 text-xs font-semibold text-[#B34515] dark:text-red-400 flex items-center gap-2 text-left cursor-pointer"
                 >
-                  <MaterialIcon name="logout" className="text-lg" />
+                  <MaterialIcon name="logout" className="text-base" />
                   <span>Sign Out</span>
                 </button>
               </>
@@ -449,14 +415,14 @@ export function HeaderNav() {
                 <Link
                   href="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center py-2.5 text-sm font-semibold text-[#1C1B18] bg-white border border-[#DCD5C5] rounded-xl hover:bg-[#FAF6E8] transition-colors"
+                  className="w-full text-center py-2 text-xs font-semibold text-[#1C1B18] dark:text-zinc-100 bg-white dark:bg-zinc-800 border border-[#DCD5C5] dark:border-zinc-700 rounded-xl hover:bg-[#FAF6E8] dark:hover:bg-zinc-700 transition-colors"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/signup"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center py-2.5 text-sm font-semibold text-white bg-[#1C1B18] rounded-xl hover:bg-[#2E2C26] transition-colors"
+                  className="w-full text-center py-2 text-xs font-semibold text-white bg-[#1C1B18] dark:bg-zinc-100 dark:text-zinc-900 rounded-xl hover:bg-[#2E2C26] dark:hover:bg-white transition-colors"
                 >
                   Sign Up / Get Started
                 </Link>
@@ -479,3 +445,4 @@ export function HeaderNav() {
     </header>
   );
 }
+
