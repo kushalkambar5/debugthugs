@@ -250,6 +250,18 @@ export default function DashboardPage() {
                       <span className="text-[11px] font-bold font-sans tracking-wide text-center leading-snug">{tab.label}</span>
                     </Link>
                   ))}
+                  {/* Patient-only: Tasks & Diet card */}
+                  {role === "PATIENT" && (
+                    <Link
+                      href="/tasks-diet"
+                      className="group p-5 rounded-3xl border border-emerald-200/60 bg-emerald-50/40 hover:bg-white hover:border-emerald-300 hover:shadow-md transition-all duration-300 flex flex-col items-center gap-3 cursor-pointer"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-100/70 border border-emerald-200/60 group-hover:bg-emerald-100 flex items-center justify-center transition-colors">
+                        <MaterialIcon name="task_alt" className="text-xl text-emerald-600" />
+                      </div>
+                      <span className="text-[11px] font-bold font-sans tracking-wide text-center leading-snug text-emerald-700">Tasks & Diet</span>
+                    </Link>
+                  )}
                   {/* Patient-only: Chat with Doctor card */}
                   {role === "PATIENT" && (
                     <Link

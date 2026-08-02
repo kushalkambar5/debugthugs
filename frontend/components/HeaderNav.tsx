@@ -62,6 +62,11 @@ export function HeaderNav() {
   <Link href="/health-metrics" className={`text-sm font-sans transition-colors ${pathname === "/health-metrics" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#4D493E] hover:text-[#1C1B18]"}`}>
     Health Metrics
   </Link>
+  {session?.user?.role === "PATIENT" && (
+    <Link href="/tasks-diet" className={`text-sm font-sans transition-colors flex items-center gap-1 ${pathname === "/tasks-diet" ? "font-bold text-emerald-700" : "font-medium text-[#4D493E] hover:text-emerald-700"}`}>
+      Tasks & Diet
+    </Link>
+  )}
   <Link href="/medical-history" className={`text-sm font-sans transition-colors ${pathname === "/medical-history" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#4D493E] hover:text-[#1C1B18]"}`}>
     Medical History
   </Link>
@@ -241,6 +246,11 @@ export function HeaderNav() {
                 <Link href="/health-metrics" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] ${pathname === "/health-metrics" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#1C1B18]"}`}>
                   Health Metrics
                 </Link>
+                {session?.user?.role === "PATIENT" && (
+                  <Link href="/tasks-diet" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] flex items-center gap-1.5 ${pathname === "/tasks-diet" ? "font-bold text-emerald-700" : "font-medium text-[#1C1B18] hover:text-emerald-700"}`}>
+                    Tasks & Diet
+                  </Link>
+                )}
                 <Link href="/medical-history" onClick={() => setMobileMenuOpen(false)} className={`py-1 border-b border-[#E8E2D4] ${pathname === "/medical-history" ? "font-bold text-[#8C6B1F]" : "font-medium text-[#1C1B18]"}`}>
                   Medical History
                 </Link>

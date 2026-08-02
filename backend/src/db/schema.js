@@ -31,6 +31,8 @@ export const dietPlanStatusEnum = pgEnum('diet_plan_status', ['DRAFT', 'AI_GENER
 export const suggestionCategoryEnum = pgEnum('suggestion_category', ['DIET', 'EXERCISE', 'MEDICATION', 'LIFESTYLE', 'FOLLOWUP']);
 export const suggestionStatusEnum = pgEnum('suggestion_status', ['PENDING_REVIEW', 'DOCTOR_APPROVED', 'DOCTOR_MODIFIED', 'DOCTOR_REJECTED', 'AUTO_APPROVED']);
 export const severityEnum = pgEnum('severity', ['MILD', 'MODERATE', 'SEVERE', 'CRITICAL']);
+export const taskTypeEnum = pgEnum('task_type', ['task_based', 'goal_based']);
+export const goalMetricEnum = pgEnum('goal_metric', ['daily_steps', 'calories_burn', 'min_sleep']);
 
 // ==========================================
 // TABLES
@@ -136,6 +138,7 @@ export const diseaseScans = pgTable('disease_scans', {
 export const dietPlans = pgTable('diet_plans', {
   id: uuid('id').primaryKey().defaultRandom(),
   patientId: uuid('patient_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  doctorId: uuid('doctor_id').references(() => doctorProfiles.id, { onDelete: 'set null' }),
   createdBy: uuid('created_by'), // nullable/no FK constraint since it can be "SYSTEM" or a doctor's ID
   title: varchar('title', { length: 255 }),
   status: dietPlanStatusEnum('status').default('DRAFT'),
@@ -148,6 +151,37 @@ export const dietPlans = pgTable('diet_plans', {
   doctorNotes: text('doctor_notes'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ==========================================
+// TASKS
+// ==========================================
+
+export const tasks = pgTable('tasks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  doctorId: uuid('doctor_id').notNull().references(() => doctorProfiles.id, { onDelete: 'cascade' }),
+  patientId: uuid('patient_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  taskType: taskTypeEnum('task_type').notNull(),
+  // --- task_based only ---
+  taskName: varchar('task_name', { length: 255 }),       // free-text name for task_based
+  // --- goal_based only ---
+  goalMetric: goalMetricEnum('goal_metric'),             // which wearable metric to watch
+  goalTarget: numeric('goal_target', { precision: 10, scale: 2 }), // target value
+  freqIntervalDays: integer('freq_interval_days'),       // recurrence in days (1=daily, 7=weekly…)
+  // --- common ---
+  taskDescription: text('task_description'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const taskHistory = pgTable('task_history', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  taskId: uuid('task_id').notNull().references(() => tasks.id, { onDelete: 'cascade' }),
+  periodDate: date('period_date').notNull(),             // the date this interval covers
+  isDone: boolean('is_done').default(false).notNull(),
+  actualValue: numeric('actual_value', { precision: 10, scale: 2 }), // wearable value (goal_based)
+  recordedAt: timestamp('recorded_at').defaultNow().notNull(),
 });
 
 export const aiSuggestions = pgTable('ai_suggestions', {

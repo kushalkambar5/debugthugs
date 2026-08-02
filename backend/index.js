@@ -5,6 +5,8 @@ import authRoutes from './src/routes/auth.js';
 import healthRoutes from './src/routes/health.js';
 import uploadRoutes from './src/routes/upload.js';
 import apiRoutes from './src/routes/api.js';
+import tasksRoutes from './src/routes/tasks.js';
+import dietRoutes from './src/routes/diet.js';
 
 dotenv.config();
 
@@ -25,6 +27,8 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/tasks', tasksRoutes);
+app.use('/api/diet', dietRoutes);
 app.use('/api', apiRoutes);
 
 app.listen(PORT, () => {
