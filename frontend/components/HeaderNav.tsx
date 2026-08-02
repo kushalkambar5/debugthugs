@@ -20,6 +20,29 @@ export function HeaderNav() {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tunnelsActive, setTunnelsActive] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    const checkTheme = () => {
+      if (typeof window !== "undefined") {
+        const currentTheme = document.documentElement.classList.contains("dark") ? "dark" : "light";
+        setTheme(currentTheme);
+      }
+    };
+    checkTheme();
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    if (newTheme === "dark") {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
 
   useEffect(() => {
     const checkTunnels = () => {
@@ -127,6 +150,19 @@ export function HeaderNav() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
               </span>
+            )}
+          </button>
+
+          {/* Theme Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+            className="w-10 h-10 rounded-full border border-[#DCD5C5] bg-white flex items-center justify-center hover:bg-[#FAF6E8] text-[#787363] transition-all cursor-pointer relative"
+          >
+            {theme === "light" ? (
+              <MaterialIcon name="dark_mode" className="text-xl" />
+            ) : (
+              <MaterialIcon name="light_mode" className="text-xl" />
             )}
           </button>
 
@@ -244,6 +280,19 @@ export function HeaderNav() {
 
         {/* Mobile menu button */}
         <div className="flex md:hidden items-center gap-2">
+          {/* Mobile Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+            className="p-2 rounded-lg text-[#787363] relative cursor-pointer"
+          >
+            {theme === "light" ? (
+              <MaterialIcon name="dark_mode" className="text-2xl" />
+            ) : (
+              <MaterialIcon name="light_mode" className="text-2xl" />
+            )}
+          </button>
+
           <button
             onClick={() => setSettingsOpen(true)}
             title="Configure Tunnels"

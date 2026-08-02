@@ -34,8 +34,28 @@ export default function RootLayout({
     <html
       lang="en"
       className="h-full antialiased scroll-smooth"
+      suppressHydrationWarning
     >
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('theme');
+                  var systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                  if (theme === 'dark' || (!theme && systemPrefersDark)) {
+                    document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
+                } catch (e) {
+                  console.error('Error applying theme', e);
+                }
+              })();
+            `,
+          }}
+        />
         <link
           rel="stylesheet"
           href="https://fonts.cdnfonts.com/css/google-sans"
