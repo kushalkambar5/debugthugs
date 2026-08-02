@@ -234,6 +234,19 @@ const KEYFRAME_STAGES: KeyFrameStage[] = [
   },
 ];
 
+const INTERNAL_ORGANS_LIST = [
+  { id: "brain", name: "Brain", emoji: "🧠" },
+  { id: "eyes", name: "Eyes", emoji: "👁️" },
+  { id: "lungs", name: "Lungs", emoji: "🫁" },
+  { id: "heart", name: "Heart", emoji: "❤️" },
+  { id: "diaphragm", name: "Diaphragm", emoji: "🫧" },
+  { id: "liver", name: "Liver", emoji: "🫁" },
+  { id: "gallbladder", name: "Gallbladder", emoji: "🟢" },
+  { id: "digestive", name: "Digestive System", emoji: "🫄" },
+  { id: "urinary", name: "Urinary System", emoji: "🫘" },
+];
+
+
 // ── Types for right panel ────────────────────────────────────────────────────
 
 interface DiseaseScan {
@@ -726,6 +739,9 @@ export default function BodyVisualizer() {
   const activeList = mode === "detailed" ? DETAILED_STAGES : KEYFRAME_STAGES;
   const maxStages = activeList.length;
   const activeStage = activeList[stage - 1] || activeList[0];
+  const isInternalOrgansActive =
+    (mode === "keyframe" && stage === 3) ||
+    (mode === "detailed" && stage >= 3 && stage <= 11);
 
   // Fetch medical history once on mount
   useEffect(() => {
@@ -914,7 +930,7 @@ export default function BodyVisualizer() {
         />
 
         {selectedPart && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#1C1B18]/90 text-white px-3 py-1.5 rounded-full text-[10px] font-bold font-sans z-20 backdrop-blur-sm">
+          <div className="mb-4 flex items-center gap-2 bg-[#1C1B18]/90 text-white px-3 py-1.5 rounded-full text-[10px] font-bold font-sans z-20 backdrop-blur-sm transition-all duration-200">
             <span>{selectedPart.emoji}</span>
             <span>{selectedPart.name} selected</span>
             <button
@@ -926,89 +942,122 @@ export default function BodyVisualizer() {
           </div>
         )}
 
-        {/* Body Model Relative Stack Container */}
-        <div className="relative w-[300px] h-[500px] sm:w-[340px] sm:h-[580px]">
-          {DETAILED_STAGES.map((stageItem) => {
-            const visible = isLayerVisible(stageItem);
-            const isPulse = pulseLayer === stageItem.stage;
-            const positions = stageItem.positions || (stageItem.position ? [stageItem.position] : [null]);
-            const isSelected = selectedPart?.id === stageItem.id;
+        <div className="flex flex-col md:flex-row items-center justify-center gap-8 w-full max-w-3xl mt-4 relative z-10">
+          {/* Organ Selector (Left Side) */}
+          {isInternalOrgansActive && (
+            <div className="w-full md:w-56 bg-white/75 backdrop-blur-md border border-[#E6E1D3] rounded-2xl p-4 flex flex-col gap-2 shadow-xs z-20 md:self-start md:mt-6 transition-all duration-300">
+              <p className="text-[10px] font-bold text-[#4D493E] uppercase tracking-wider mb-1 font-sans flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[14px]">view_cozy</span>
+                Select Organ
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-1 gap-1.5 max-h-[300px] md:max-h-[500px] overflow-y-auto pr-1">
+                {INTERNAL_ORGANS_LIST.map((organ) => {
+                  const stageItem = DETAILED_STAGES.find((s) => s.id === organ.id);
+                  if (!stageItem) return null;
+                  const isSelected = selectedPart?.id === organ.id;
+                  return (
+                    <button
+                      key={organ.id}
+                      onClick={() => handleOrganClick(stageItem)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold font-sans border text-left transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-[#1C1B18] text-white shadow-xs border-[#1C1B18]"
+                          : "bg-white/80 border-[#E6E1D3] text-[#4D493E] hover:border-[#8C6B1F] hover:bg-[#FAF6E8]"
+                      }`}
+                    >
+                      <span className="text-base shrink-0">{organ.emoji}</span>
+                      <span className="truncate">{organ.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-            return positions.map((pos, idx) => {
-              const uniqueId = positions.length > 1 ? `${stageItem.id}-${idx}` : stageItem.id;
-              const isHovered = hoveredLayer === uniqueId;
-              const labelText =
-                positions.length > 1
-                  ? `${stageItem.name} (${idx === 0 ? "Left" : "Right"})`
-                  : stageItem.name;
+          {/* Body Model Relative Stack Container */}
+          <div className="relative w-[300px] h-[500px] sm:w-[340px] sm:h-[580px] shrink-0">
+            {DETAILED_STAGES.map((stageItem) => {
+              const visible = isLayerVisible(stageItem);
+              const isPulse = pulseLayer === stageItem.stage;
+              const positions = stageItem.positions || (stageItem.position ? [stageItem.position] : [null]);
+              const isSelected = selectedPart?.id === stageItem.id;
 
-              const isOrganOnTop = clickedOrganTopId === stageItem.id;
-              const baseStyles: React.CSSProperties = {
-                position: "absolute",
-                zIndex: isOrganOnTop ? 100 : stageItem.zIndex,
-                transition: "opacity 0.4s ease, transform 0.4s ease, filter 0.2s ease, z-index 0s",
-                opacity: visible ? 1 : 0,
-                pointerEvents: visible && stageItem.type === "organ" ? "auto" : "none",
-                cursor: stageItem.type === "organ" ? "pointer" : "default",
-              };
+              return positions.map((pos, idx) => {
+                const uniqueId = positions.length > 1 ? `${stageItem.id}-${idx}` : stageItem.id;
+                const isHovered = hoveredLayer === uniqueId;
+                const labelText =
+                  positions.length > 1
+                    ? `${stageItem.name} (${idx === 0 ? "Left" : "Right"})`
+                    : stageItem.name;
 
-              if (stageItem.type === "full-body") {
-                const isCirculatory = stageItem.id === "circulatory";
-                baseStyles.top = 0;
-                baseStyles.left = "50%";
-                baseStyles.transform = `translateX(-50%) ${
-                  visible
-                    ? isCirculatory
-                      ? "scale(1.4)"
-                      : "scale(1)"
-                    : isCirculatory
-                    ? "scale(1.37)"
-                    : "scale(0.97)"
-                }`;
-                baseStyles.width = "auto";
-                baseStyles.height = "100%";
-                baseStyles.objectFit = "contain";
-              } else if (pos) {
-                baseStyles.top = pos.top;
-                baseStyles.left = pos.left;
-                baseStyles.width = pos.width;
-                if (pos.height) baseStyles.height = pos.height;
-                baseStyles.transform = `${pos.transform} ${visible ? "scale(1)" : "scale(0.85)"}`;
-                baseStyles.objectFit = "contain";
-              }
+                const isOrganOnTop = clickedOrganTopId === stageItem.id;
+                const baseStyles: React.CSSProperties = {
+                  position: "absolute",
+                  zIndex: isOrganOnTop ? 100 : stageItem.zIndex,
+                  transition: "opacity 0.4s ease, transform 0.4s ease, filter 0.2s ease, z-index 0s",
+                  opacity: visible ? 1 : 0,
+                  pointerEvents: visible && stageItem.type === "organ" ? "auto" : "none",
+                  cursor: stageItem.type === "organ" ? "pointer" : "default",
+                };
 
-              let filterString = "";
-              if (isSelected) {
-                filterString = `drop-shadow(0 0 14px ${stageItem.color}) brightness(1.1)`;
-              } else if (isHovered) {
-                filterString = "drop-shadow(0 0 10px rgba(140, 107, 31, 0.8)) brightness(1.05)";
-              } else if (isPulse) {
-                filterString = "drop-shadow(0 0 12px rgba(28, 27, 24, 0.7))";
-              }
-              if (filterString) {
-                baseStyles.filter = filterString;
-              }
+                if (stageItem.type === "full-body") {
+                  const isCirculatory = stageItem.id === "circulatory";
+                  baseStyles.top = 0;
+                  baseStyles.left = "50%";
+                  baseStyles.transform = `translateX(-50%) ${
+                    visible
+                      ? isCirculatory
+                        ? "scale(1.4)"
+                        : "scale(1)"
+                      : isCirculatory
+                      ? "scale(1.37)"
+                      : "scale(0.97)"
+                  }`;
+                  baseStyles.width = "auto";
+                  baseStyles.height = "100%";
+                  baseStyles.objectFit = "contain";
+                } else if (pos) {
+                  baseStyles.top = pos.top;
+                  baseStyles.left = pos.left;
+                  baseStyles.width = pos.width;
+                  if (pos.height) baseStyles.height = pos.height;
+                  baseStyles.transform = `${pos.transform} ${visible ? "scale(1)" : "scale(0.85)"}`;
+                  baseStyles.objectFit = "contain";
+                }
 
-              return (
-                <div
-                  key={uniqueId}
-                  style={baseStyles}
-                  className={`select-none ${visible ? "" : "pointer-events-none"}`}
-                  onMouseEnter={(e) => handleMouseEnter(e, `${stageItem.emoji} ${labelText}`, uniqueId)}
-                  onMouseMove={handleMouseMove}
-                  onMouseLeave={handleMouseLeave}
-                  onClick={() => visible && stageItem.type === "organ" && handleOrganClick(stageItem)}
-                >
-                  <img
-                    src={stageItem.file}
-                    alt={stageItem.name}
-                    draggable={false}
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-              );
-            });
-          })}
+                let filterString = "";
+                if (isSelected) {
+                  filterString = `drop-shadow(0 0 14px ${stageItem.color}) brightness(1.1)`;
+                } else if (isHovered) {
+                  filterString = "drop-shadow(0 0 10px rgba(140, 107, 31, 0.8)) brightness(1.05)";
+                } else if (isPulse) {
+                  filterString = "drop-shadow(0 0 12px rgba(28, 27, 24, 0.7))";
+                }
+                if (filterString) {
+                  baseStyles.filter = filterString;
+                }
+
+                return (
+                  <div
+                    key={uniqueId}
+                    style={baseStyles}
+                    className={`select-none ${visible ? "" : "pointer-events-none"}`}
+                    onMouseEnter={(e) => handleMouseEnter(e, `${stageItem.emoji} ${labelText}`, uniqueId)}
+                    onMouseMove={handleMouseMove}
+                    onMouseLeave={handleMouseLeave}
+                    onClick={() => visible && stageItem.type === "organ" && handleOrganClick(stageItem)}
+                  >
+                    <img
+                      src={stageItem.file}
+                      alt={stageItem.name}
+                      draggable={false}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                );
+              });
+            })}
+          </div>
         </div>
       </section>
 
