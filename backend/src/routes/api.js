@@ -54,7 +54,16 @@ async function streamProxy(targetBaseUrl, req, res) {
 
   const headers = {};
   Object.keys(req.headers).forEach((key) => {
-    if (!['host', 'content-length', 'connection'].includes(key.toLowerCase())) {
+    if (![
+      'host',
+      'connection',
+      'content-length',
+      'expect',
+      'keep-alive',
+      'transfer-encoding',
+      'te',
+      'upgrade'
+    ].includes(key.toLowerCase())) {
       headers[key] = req.headers[key];
     }
   });
@@ -102,13 +111,13 @@ async function streamProxy(targetBaseUrl, req, res) {
 
 // Models Service Proxy (port 8000)
 router.all(/^\/models/, (req, res) => {
-  const modelsUrl = process.env.MODELS_URL || 'http://localhost:8000';
+  const modelsUrl = process.env.MODELS_URL || 'http://127.0.0.1:8000';
   return streamProxy(modelsUrl, req, res);
 });
 
 // Chatbot Service Proxy (port 8001)
 router.all(/^\/chatbot/, (req, res) => {
-  const chatbotUrl = process.env.NEXT_PUBLIC_CHATBOT_URL || 'http://localhost:8001';
+  const chatbotUrl = process.env.NEXT_PUBLIC_CHATBOT_URL || 'http://127.0.0.1:8001';
   return streamProxy(chatbotUrl, req, res);
 });
 

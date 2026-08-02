@@ -14,7 +14,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // LibreChat proxy middleware (placed before body parsers to keep request stream intact)
-const LIBRECHAT_URL = process.env.LIBRECHAT_URL || 'http://localhost:3080';
+const LIBRECHAT_URL = process.env.LIBRECHAT_URL || 'http://127.0.0.1:3080';
 app.use(async (req, res, next) => {
   const referer = req.headers.referer || '';
   const isLibrechatReferer = referer.includes('/librechat') || referer.includes('autoLoginToken');
@@ -31,7 +31,16 @@ app.use(async (req, res, next) => {
 
     const headers = {};
     Object.keys(req.headers).forEach((key) => {
-      if (!['host', 'content-length', 'connection'].includes(key.toLowerCase())) {
+      if (![
+        'host',
+        'connection',
+        'content-length',
+        'expect',
+        'keep-alive',
+        'transfer-encoding',
+        'te',
+        'upgrade'
+      ].includes(key.toLowerCase())) {
         headers[key] = req.headers[key];
       }
     });

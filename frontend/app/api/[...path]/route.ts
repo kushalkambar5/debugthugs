@@ -42,7 +42,19 @@ async function handleProxy(req: Request, pathSegments: string[]) {
   // Copy relevant headers from the client request, excluding headers that will be rebuilt or cause mismatches
   // content-type is excluded here because multipart needs its boundary auto-set by fetch,
   // and for JSON we set it explicitly below
-  const excludedHeaders = ["host", "connection", "content-length", "content-type", "x-custom-backend-url", "x-custom-models-url"];
+  const excludedHeaders = [
+    "host",
+    "connection",
+    "content-length",
+    "content-type",
+    "x-custom-backend-url",
+    "x-custom-models-url",
+    "expect",
+    "keep-alive",
+    "transfer-encoding",
+    "te",
+    "upgrade"
+  ];
   req.headers.forEach((value, key) => {
     if (!excludedHeaders.includes(key.toLowerCase())) {
       headers.set(key, value);
