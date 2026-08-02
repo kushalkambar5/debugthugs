@@ -205,15 +205,15 @@ export default function TasksDietPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#F6F4EF] font-sans">
+      <div className="min-h-screen flex flex-col bg-[#F6F4EF] dark:bg-[#121110] font-sans">
         <HeaderNav />
         <main className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
-            <svg className="animate-spin h-8 w-8 text-[#8C6B1F]" fill="none" viewBox="0 0 24 24">
+            <svg className="animate-spin h-8 w-8 text-[#8C6B1F] dark:text-[#D4AF37]" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            <span className="text-xs font-bold text-[#787363] uppercase tracking-wider">Loading your health plan...</span>
+            <span className="text-xs font-bold text-[#787363] dark:text-zinc-400 uppercase tracking-wider">Loading your health plan...</span>
           </div>
         </main>
         <Footer />
@@ -227,7 +227,7 @@ export default function TasksDietPage() {
   const latestDiet = dietPlans[0];
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F6F4EF] text-[#1C1B18] font-sans antialiased">
+    <div className="min-h-screen flex flex-col bg-[#F6F4EF] dark:bg-[#121110] text-[#1C1B18] dark:text-zinc-100 font-sans antialiased transition-colors">
       <HeaderNav />
 
       {/* Toast */}
@@ -243,7 +243,7 @@ export default function TasksDietPage() {
       <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
         {/* Header */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-[#1C1B18] via-[#2A2925] to-[#1C1B18] text-[#FAF9F5] border border-[#3E3A32] p-7 rounded-[32px] shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <section className="relative overflow-hidden bg-gradient-to-br from-[#1C1B18] via-[#2A2925] to-[#1C1B18] dark:from-zinc-900 dark:via-zinc-950 dark:to-zinc-900 text-[#FAF9F5] border border-[#3E3A32] dark:border-zinc-800 p-7 rounded-[32px] shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <span className="relative flex h-2 w-2">
@@ -252,17 +252,17 @@ export default function TasksDietPage() {
               </span>
               <span className="text-[10px] font-bold tracking-widest text-white/60 uppercase">Your Health Plan</span>
             </div>
-            <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Tasks & Diet</h1>
-            <p className="text-xs text-white/50">Assigned by your doctor • Track your daily goals</p>
+            <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-white">Tasks & Diet</h1>
+            <p className="text-xs text-white/60">Assigned by your doctor • Track your daily goals</p>
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             {/* Stats Pills */}
             <div className="flex gap-2">
-              <span className="text-[10px] font-bold uppercase bg-white/10 border border-white/10 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+              <span className="text-[10px] font-bold uppercase bg-white/10 dark:bg-white/5 border border-white/10 px-3 py-1.5 rounded-full flex items-center gap-1.5 text-white">
                 <MaterialIcon name="task_alt" className="text-xs text-emerald-400" />
                 {activeTasks.length} Active Tasks
               </span>
-              <span className="text-[10px] font-bold uppercase bg-white/10 border border-white/10 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+              <span className="text-[10px] font-bold uppercase bg-white/10 dark:bg-white/5 border border-white/10 px-3 py-1.5 rounded-full flex items-center gap-1.5 text-white">
                 <MaterialIcon name="restaurant" className="text-xs text-amber-400" />
                 {dietPlans.length} Diet Plan{dietPlans.length !== 1 ? "s" : ""}
               </span>
@@ -271,7 +271,7 @@ export default function TasksDietPage() {
             <button
               onClick={syncHistory}
               disabled={syncing}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-[10px] font-bold uppercase rounded-xl transition-all cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-[10px] font-bold uppercase rounded-xl transition-all cursor-pointer shadow-xs"
             >
               <MaterialIcon name="sync" className={`text-sm ${syncing ? "animate-spin" : ""}`} />
               {syncing ? "Syncing..." : "Sync Goals"}
@@ -280,13 +280,13 @@ export default function TasksDietPage() {
         </section>
 
         {/* View Toggle */}
-        <div className="flex gap-1 bg-white border border-[#E6E1D3] rounded-2xl p-1 shadow-xs">
+        <div className="flex gap-1 bg-white dark:bg-zinc-900 border border-[#E6E1D3] dark:border-zinc-800 rounded-2xl p-1 shadow-xs">
           <button
             onClick={() => setView("tasks")}
             className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all cursor-pointer flex items-center justify-center gap-2 ${
               view === "tasks"
-                ? "bg-[#1C1B18] text-white shadow-sm"
-                : "text-[#787363] hover:text-[#1C1B18]"
+                ? "bg-[#1C1B18] dark:bg-zinc-800 text-white shadow-sm"
+                : "text-[#787363] dark:text-zinc-400 hover:text-[#1C1B18] dark:hover:text-white"
             }`}
           >
             <MaterialIcon name="task_alt" className="text-sm" />
@@ -296,8 +296,8 @@ export default function TasksDietPage() {
             onClick={() => setView("diet")}
             className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all cursor-pointer flex items-center justify-center gap-2 ${
               view === "diet"
-                ? "bg-[#1C1B18] text-white shadow-sm"
-                : "text-[#787363] hover:text-[#1C1B18]"
+                ? "bg-[#1C1B18] dark:bg-zinc-800 text-white shadow-sm"
+                : "text-[#787363] dark:text-zinc-400 hover:text-[#1C1B18] dark:hover:text-white"
             }`}
           >
             <MaterialIcon name="restaurant" className="text-sm" />
@@ -310,10 +310,10 @@ export default function TasksDietPage() {
           <div className="space-y-6">
 
             {activeTasks.length === 0 && (
-              <div className="bg-white border border-[#E6E1D3] rounded-3xl p-12 text-center space-y-3">
-                <MaterialIcon name="task_alt" className="text-5xl text-[#E6E1D3] block" />
-                <h3 className="font-serif text-lg font-bold text-[#1C1B18]">No tasks assigned yet</h3>
-                <p className="text-xs text-[#787363]">Your doctor will assign tasks here. Check back soon.</p>
+              <div className="bg-white dark:bg-zinc-900 border border-[#E6E1D3] dark:border-zinc-800 rounded-3xl p-12 text-center space-y-3">
+                <MaterialIcon name="task_alt" className="text-5xl text-[#E6E1D3] dark:text-zinc-700 block" />
+                <h3 className="font-serif text-lg font-bold text-[#1C1B18] dark:text-zinc-100">No tasks assigned yet</h3>
+                <p className="text-xs text-[#787363] dark:text-zinc-400">Your doctor will assign tasks here. Check back soon.</p>
               </div>
             )}
 
@@ -321,11 +321,11 @@ export default function TasksDietPage() {
             {taskBasedTasks.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-emerald-100 border border-emerald-200 flex items-center justify-center">
-                    <MaterialIcon name="check_box" className="text-xs text-emerald-600" />
+                  <div className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center">
+                    <MaterialIcon name="check_box" className="text-xs text-emerald-600 dark:text-emerald-400" />
                   </div>
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#787363]">Manual Tasks</h2>
-                  <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">Tick when done</span>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#787363] dark:text-zinc-400">Manual Tasks</h2>
+                  <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800 px-2 py-0.5 rounded-full">Tick when done</span>
                 </div>
                 <div className="space-y-3">
                   {taskBasedTasks.map((task) => {
@@ -335,8 +335,8 @@ export default function TasksDietPage() {
                     const isMarking = markingDone === task.id;
 
                     return (
-                      <div key={task.id} className={`bg-white border rounded-2xl overflow-hidden transition-all shadow-xs ${
-                        isDoneToday ? "border-emerald-200" : "border-[#E6E1D3]"
+                      <div key={task.id} className={`bg-white dark:bg-zinc-900 border rounded-2xl overflow-hidden transition-all shadow-xs ${
+                        isDoneToday ? "border-emerald-200 dark:border-emerald-800/60" : "border-[#E6E1D3] dark:border-zinc-800"
                       }`}>
                         <div className="flex items-center gap-4 p-4">
                           {/* Checkbox */}
@@ -349,31 +349,31 @@ export default function TasksDietPage() {
                             className={`w-10 h-10 rounded-xl flex-shrink-0 border-2 flex items-center justify-center transition-all cursor-pointer ${
                               isDoneToday
                                 ? "bg-emerald-500 border-emerald-500 text-white"
-                                : "border-[#E6E1D3] hover:border-emerald-400 text-transparent hover:text-emerald-300 bg-white"
+                                : "border-[#E6E1D3] dark:border-zinc-700 hover:border-emerald-400 text-transparent hover:text-emerald-300 bg-white dark:bg-zinc-800"
                             } ${isMarking ? "opacity-50" : ""}`}
                           >
                             <MaterialIcon name="check" className="text-base" />
                           </button>
 
                           <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-bold ${isDoneToday ? "line-through text-[#A8A28E]" : "text-[#1C1B18]"}`}>
+                            <p className={`text-sm font-bold ${isDoneToday ? "line-through text-[#A8A28E] dark:text-zinc-500" : "text-[#1C1B18] dark:text-zinc-100"}`}>
                               {task.taskName}
                             </p>
                             {task.taskDescription && (
-                              <p className="text-[10px] text-[#787363] mt-0.5 truncate">{task.taskDescription}</p>
+                              <p className="text-[10px] text-[#787363] dark:text-zinc-400 mt-0.5 truncate">{task.taskDescription}</p>
                             )}
                           </div>
 
                           <div className="flex items-center gap-2 flex-shrink-0">
                             {isDoneToday && (
-                              <span className="text-[9px] font-bold uppercase px-2 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full">Done today</span>
+                              <span className="text-[9px] font-bold uppercase px-2 py-1 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 rounded-full">Done today</span>
                             )}
                             <button
                               onClick={() => {
                                 toggleExpand(task.id);
                                 if (!taskHistories[task.id]) fetchHistory(task.id);
                               }}
-                              className="p-1.5 rounded-lg hover:bg-[#F6F4EF] text-[#787363] transition-all cursor-pointer"
+                              className="p-1.5 rounded-lg hover:bg-[#F6F4EF] dark:hover:bg-zinc-800 text-[#787363] dark:text-zinc-400 transition-all cursor-pointer"
                               title="View history"
                             >
                               <MaterialIcon name={isExpanded ? "expand_less" : "history"} className="text-sm" />
@@ -383,17 +383,17 @@ export default function TasksDietPage() {
 
                         {/* History Drawer */}
                         {isExpanded && (
-                          <div className="border-t border-[#F6F4EF] px-4 py-3 bg-[#FAF9F5]">
-                            <p className="text-[9px] font-bold uppercase text-[#787363] mb-2">Completion History (last 20 days)</p>
+                          <div className="border-t border-[#F6F4EF] dark:border-zinc-800 px-4 py-3 bg-[#FAF9F5] dark:bg-zinc-950/60">
+                            <p className="text-[9px] font-bold uppercase text-[#787363] dark:text-zinc-400 mb-2">Completion History (last 20 days)</p>
                             {historyLoading === task.id ? (
-                              <p className="text-xs text-[#787363]">Loading...</p>
+                              <p className="text-xs text-[#787363] dark:text-zinc-400">Loading...</p>
                             ) : !taskHistories[task.id] || taskHistories[task.id].length === 0 ? (
-                              <p className="text-xs text-[#787363]">No history yet. Start by ticking the task today!</p>
+                              <p className="text-xs text-[#787363] dark:text-zinc-400">No history yet. Start by ticking the task today!</p>
                             ) : (
                               <div className="flex flex-wrap gap-2">
                                 {taskHistories[task.id].slice(0, 20).map((h) => (
                                   <div key={h.id} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold border ${
-                                    h.isDone ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-[#F6F4EF] border-[#E6E1D3] text-[#A8A28E]"
+                                    h.isDone ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300" : "bg-[#F6F4EF] dark:bg-zinc-800 border-[#E6E1D3] dark:border-zinc-700 text-[#A8A28E] dark:text-zinc-400"
                                   }`}>
                                     <MaterialIcon name={h.isDone ? "check" : "close"} className="text-xs" />
                                     {h.periodDate === todayStr ? "Today" : h.periodDate}
@@ -414,11 +414,11 @@ export default function TasksDietPage() {
             {goalBasedTasks.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-violet-100 border border-violet-200 flex items-center justify-center">
-                    <MaterialIcon name="track_changes" className="text-xs text-violet-600" />
+                  <div className="w-6 h-6 rounded-lg bg-violet-100 dark:bg-violet-950/60 border border-violet-200 dark:border-violet-800 flex items-center justify-center">
+                    <MaterialIcon name="track_changes" className="text-xs text-violet-600 dark:text-violet-400" />
                   </div>
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#787363]">Goal Tracking</h2>
-                  <span className="text-[9px] font-bold text-violet-600 bg-violet-50 border border-violet-100 px-2 py-0.5 rounded-full">Auto-tracked from wearable</span>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#787363] dark:text-zinc-400">Goal Tracking</h2>
+                  <span className="text-[9px] font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 border border-violet-100 dark:border-violet-800 px-2 py-0.5 rounded-full">Auto-tracked from wearable</span>
                 </div>
                 <div className="space-y-3">
                   {goalBasedTasks.map((task) => {
@@ -432,49 +432,49 @@ export default function TasksDietPage() {
                     const progressPct = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0;
 
                     return (
-                      <div key={task.id} className="bg-white border border-[#E6E1D3] rounded-2xl overflow-hidden shadow-xs">
+                      <div key={task.id} className="bg-white dark:bg-zinc-900 border border-[#E6E1D3] dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xs">
                         <div className="flex items-center gap-4 p-4">
                           <div className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center ${
-                            todayEntry?.isDone ? "bg-violet-500 text-white" : "bg-violet-50 border border-violet-200 text-violet-600"
+                            todayEntry?.isDone ? "bg-violet-500 text-white" : "bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400"
                           }`}>
                             <MaterialIcon name={metricIcon} className="text-base" />
                           </div>
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-bold text-[#1C1B18]">{metricLabel}</p>
-                              <span className="text-[9px] font-bold text-violet-600 bg-violet-50 border border-violet-100 px-1.5 py-0.5 rounded-full">
+                              <p className="text-sm font-bold text-[#1C1B18] dark:text-zinc-100">{metricLabel}</p>
+                              <span className="text-[9px] font-bold text-violet-600 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/50 border border-violet-100 dark:border-violet-800 px-1.5 py-0.5 rounded-full">
                                 Target: {task.goalTarget}
                               </span>
                             </div>
                             {task.taskDescription && (
-                              <p className="text-[10px] text-[#787363] mt-0.5">{task.taskDescription}</p>
+                              <p className="text-[10px] text-[#787363] dark:text-zinc-400 mt-0.5">{task.taskDescription}</p>
                             )}
                             {/* Progress bar */}
                             {totalDays > 0 && (
                               <div className="flex items-center gap-2 mt-2">
-                                <div className="flex-1 h-1.5 bg-[#F0EDE4] rounded-full overflow-hidden">
+                                <div className="flex-1 h-1.5 bg-[#F0EDE4] dark:bg-zinc-800 rounded-full overflow-hidden">
                                   <div
                                     className="h-full bg-violet-500 rounded-full transition-all"
                                     style={{ width: `${progressPct}%` }}
                                   />
                                 </div>
-                                <span className="text-[9px] font-bold text-[#787363]">{completedDays}/{totalDays} days</span>
+                                <span className="text-[9px] font-bold text-[#787363] dark:text-zinc-400">{completedDays}/{totalDays} days</span>
                               </div>
                             )}
                           </div>
 
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <div className="text-right">
-                              <p className="text-[9px] font-bold text-[#787363] uppercase">Every</p>
-                              <p className="text-xs font-bold text-[#1C1B18]">{task.freqIntervalDays}d</p>
+                              <p className="text-[9px] font-bold text-[#787363] dark:text-zinc-400 uppercase">Every</p>
+                              <p className="text-xs font-bold text-[#1C1B18] dark:text-zinc-100">{task.freqIntervalDays}d</p>
                             </div>
                             {todayEntry?.isDone && (
-                              <span className="text-[9px] font-bold uppercase px-2 py-1 bg-violet-50 border border-violet-200 text-violet-700 rounded-full">✓ Met</span>
+                              <span className="text-[9px] font-bold uppercase px-2 py-1 bg-violet-50 dark:bg-violet-950/50 border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 rounded-full">✓ Met</span>
                             )}
                             <button
                               onClick={() => toggleExpand(task.id)}
-                              className="p-1.5 rounded-lg hover:bg-[#F6F4EF] text-[#787363] transition-all cursor-pointer"
+                              className="p-1.5 rounded-lg hover:bg-[#F6F4EF] dark:hover:bg-zinc-800 text-[#787363] dark:text-zinc-400 transition-all cursor-pointer"
                             >
                               <MaterialIcon name={isExpanded ? "expand_less" : "expand_more"} className="text-sm" />
                             </button>
@@ -484,9 +484,9 @@ export default function TasksDietPage() {
                         {/* Today's value if available */}
                         {todayEntry?.actualValue && (
                           <div className="px-4 pb-3 flex items-center gap-2">
-                            <span className="text-[9px] font-bold uppercase text-[#787363]">Today:</span>
-                            <span className="text-xs font-bold text-violet-700">{todayEntry.actualValue} / {task.goalTarget}</span>
-                            <div className="flex-1 h-1 bg-violet-100 rounded-full overflow-hidden ml-1">
+                            <span className="text-[9px] font-bold uppercase text-[#787363] dark:text-zinc-400">Today:</span>
+                            <span className="text-xs font-bold text-violet-700 dark:text-violet-300">{todayEntry.actualValue} / {task.goalTarget}</span>
+                            <div className="flex-1 h-1 bg-violet-100 dark:bg-violet-950 rounded-full overflow-hidden ml-1">
                               <div
                                 className="h-full bg-violet-500 rounded-full"
                                 style={{ width: `${Math.min(100, (parseFloat(todayEntry.actualValue) / parseFloat(task.goalTarget || "1")) * 100)}%` }}
@@ -497,23 +497,23 @@ export default function TasksDietPage() {
 
                         {/* History Drawer */}
                         {isExpanded && (
-                          <div className="border-t border-[#F6F4EF] px-4 py-3 bg-[#FAF9F5]">
+                          <div className="border-t border-[#F6F4EF] dark:border-zinc-800 px-4 py-3 bg-[#FAF9F5] dark:bg-zinc-950/60">
                             <div className="flex items-center justify-between mb-2">
-                              <p className="text-[9px] font-bold uppercase text-[#787363]">History (auto-synced from wearable)</p>
+                              <p className="text-[9px] font-bold uppercase text-[#787363] dark:text-zinc-400">History (auto-synced from wearable)</p>
                               {historyLoading === task.id && (
-                                <svg className="animate-spin h-3 w-3 text-[#8C6B1F]" fill="none" viewBox="0 0 24 24">
+                                <svg className="animate-spin h-3 w-3 text-[#8C6B1F] dark:text-[#D4AF37]" fill="none" viewBox="0 0 24 24">
                                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                 </svg>
                               )}
                             </div>
                             {!taskHistories[task.id] || taskHistories[task.id].length === 0 ? (
-                              <p className="text-xs text-[#787363]">No history yet. Tap "Sync Goals" to sync wearable data.</p>
+                              <p className="text-xs text-[#787363] dark:text-zinc-400">No history yet. Tap "Sync Goals" to sync wearable data.</p>
                             ) : (
                               <div className="flex flex-wrap gap-2">
                                 {taskHistories[task.id].slice(0, 20).map((h) => (
                                   <div key={h.id} className={`flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-xl text-[9px] font-bold border ${
-                                    h.isDone ? "bg-violet-50 border-violet-200 text-violet-700" : "bg-[#F6F4EF] border-[#E6E1D3] text-[#A8A28E]"
+                                    h.isDone ? "bg-violet-50 dark:bg-violet-950/50 border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300" : "bg-[#F6F4EF] dark:bg-zinc-800 border-[#E6E1D3] dark:border-zinc-700 text-[#A8A28E] dark:text-zinc-400"
                                   }`}>
                                     <MaterialIcon name={h.isDone ? "check" : "close"} className="text-xs" />
                                     <span>{h.periodDate === todayStr ? "Today" : h.periodDate.slice(5)}</span>
@@ -537,36 +537,40 @@ export default function TasksDietPage() {
         {view === "diet" && (
           <div className="space-y-5">
             {dietPlans.length === 0 && (
-              <div className="bg-white border border-[#E6E1D3] rounded-3xl p-12 text-center space-y-3">
-                <MaterialIcon name="restaurant" className="text-5xl text-[#E6E1D3] block" />
-                <h3 className="font-serif text-lg font-bold text-[#1C1B18]">No diet plan yet</h3>
-                <p className="text-xs text-[#787363]">Your doctor will generate a personalized AI diet plan for you. Check back soon.</p>
+              <div className="bg-white dark:bg-zinc-900 border border-[#E6E1D3] dark:border-zinc-800 rounded-3xl p-12 text-center space-y-3">
+                <MaterialIcon name="restaurant" className="text-5xl text-[#E6E1D3] dark:text-zinc-700 block" />
+                <h3 className="font-serif text-lg font-bold text-[#1C1B18] dark:text-zinc-100">No diet plan yet</h3>
+                <p className="text-xs text-[#787363] dark:text-zinc-400">Your doctor will generate a personalized AI diet plan for you. Check back soon.</p>
               </div>
             )}
 
             {dietPlans.map((plan, idx) => (
-              <div key={plan.id} className={`bg-white border rounded-3xl overflow-hidden shadow-xs ${
-                idx === 0 ? "border-[#8C6B1F]/30" : "border-[#E6E1D3]"
+              <div key={plan.id} className={`bg-white dark:bg-[#1A1916] border rounded-3xl overflow-hidden shadow-sm transition-all ${
+                idx === 0 ? "border-[#8C6B1F]/40 dark:border-[#D4AF37]/40 ring-1 ring-[#8C6B1F]/20 dark:ring-[#D4AF37]/20" : "border-[#E6E1D3] dark:border-zinc-800"
               }`}>
                 {/* Plan Header */}
-                <div className={`p-5 ${idx === 0 ? "bg-gradient-to-r from-[#FAF6E8] to-white" : ""}`}>
+                <div className={`p-6 border-b border-[#F6F4EF] dark:border-zinc-800/80 ${
+                  idx === 0
+                    ? "bg-gradient-to-r from-[#FAF6E8] to-white dark:from-[#24211A] dark:to-[#1A1916]"
+                    : "bg-white dark:bg-[#1A1916]"
+                }`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-serif text-base font-bold text-[#1C1B18]">{plan.title || "Diet Plan"}</h3>
+                        <h3 className="font-serif text-lg font-bold text-[#1C1B18] dark:text-zinc-100">{plan.title || "Diet Plan"}</h3>
                         {idx === 0 && (
-                          <span className="text-[9px] font-bold uppercase px-2 py-0.5 bg-[#8C6B1F] text-white rounded-full">Latest</span>
+                          <span className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 bg-[#8C6B1F] dark:bg-[#D4AF37] text-white dark:text-zinc-950 rounded-full shadow-xs">Latest</span>
                         )}
-                        <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                          plan.status === "AI_GENERATED" ? "bg-amber-100 text-amber-700" :
-                          plan.status === "DOCTOR_VERIFIED" ? "bg-emerald-100 text-emerald-700" :
-                          plan.status === "ACTIVE" ? "bg-blue-100 text-blue-700" :
-                          "bg-gray-100 text-gray-600"
+                        <span className={`text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                          plan.status === "AI_GENERATED" ? "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800" :
+                          plan.status === "DOCTOR_VERIFIED" ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" :
+                          plan.status === "ACTIVE" ? "bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800" :
+                          "bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 border-gray-200 dark:border-zinc-700"
                         }`}>
                           {plan.status === "AI_GENERATED" ? "✨ AI Generated" : plan.status?.replace(/_/g, " ")}
                         </span>
                       </div>
-                      <p className="text-[9px] text-[#787363]">
+                      <p className="text-xs text-[#787363] dark:text-zinc-400">
                         Created {new Date(plan.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                         {plan.startDate && ` • ${plan.startDate} → ${plan.endDate || "ongoing"}`}
                       </p>
@@ -575,10 +579,10 @@ export default function TasksDietPage() {
 
                   {/* Health Goals */}
                   {plan.healthGoals && plan.healthGoals.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-3">
+                    <div className="flex flex-wrap gap-2 mt-4">
                       {plan.healthGoals.map((goal: string, i: number) => (
-                        <span key={i} className="text-[9px] font-bold px-2.5 py-1 bg-[#FAF6E8] border border-[#E6E1D3] text-[#8C6B1F] rounded-full flex items-center gap-1">
-                          <MaterialIcon name="favorite" className="text-xs" />
+                        <span key={i} className="text-xs font-semibold px-3 py-1 bg-[#FAF6E8] dark:bg-zinc-800/90 border border-[#E6E1D3] dark:border-zinc-700 text-[#8C6B1F] dark:text-[#E0C368] rounded-full flex items-center gap-1.5 shadow-2xs">
+                          <MaterialIcon name="favorite" className="text-xs text-[#8C6B1F] dark:text-[#D4AF37]" />
                           {goal}
                         </span>
                       ))}
@@ -588,13 +592,18 @@ export default function TasksDietPage() {
 
                 {/* Nutritional Targets */}
                 {plan.nutritionalTargets && (
-                  <div className="px-5 py-4 border-t border-[#F6F4EF]">
-                    <p className="text-[9px] font-bold uppercase text-[#787363] mb-3">Daily Nutritional Targets</p>
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                  <div className="p-6 border-b border-[#F6F4EF] dark:border-zinc-800/80 bg-white/50 dark:bg-zinc-900/30">
+                    <p className="text-xs font-bold uppercase tracking-wider text-[#787363] dark:text-zinc-400 mb-3.5 flex items-center gap-1.5">
+                      <MaterialIcon name="monitoring" className="text-sm text-[#8C6B1F] dark:text-[#D4AF37]" />
+                      Daily Nutritional Targets
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                       {Object.entries(plan.nutritionalTargets).map(([key, val]: any) => (
-                        <div key={key} className="bg-[#FAF9F5] border border-[#F0EDE4] rounded-xl p-2.5 text-center">
-                          <p className="text-[8px] font-bold uppercase text-[#787363] leading-tight">{key.replace(/([A-Z])/g, " $1").trim()}</p>
-                          <p className="text-sm font-bold text-[#1C1B18] mt-1">{val}</p>
+                        <div key={key} className="bg-[#FAF9F5] dark:bg-zinc-800/60 border border-[#F0EDE4] dark:border-zinc-700/60 rounded-2xl p-3 text-center shadow-2xs">
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-[#787363] dark:text-zinc-400 leading-tight">
+                            {key.replace(/([A-Z])/g, " $1").trim()}
+                          </p>
+                          <p className="text-base font-bold text-[#1C1B18] dark:text-zinc-100 mt-1">{val}</p>
                         </div>
                       ))}
                     </div>
@@ -603,27 +612,32 @@ export default function TasksDietPage() {
 
                 {/* Daily Schedule */}
                 {plan.dailySchedule && (
-                  <div className="px-5 py-4 border-t border-[#F6F4EF]">
-                    <p className="text-[9px] font-bold uppercase text-[#787363] mb-3">Daily Meal Schedule</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-6 border-b border-[#F6F4EF] dark:border-zinc-800/80">
+                    <p className="text-xs font-bold uppercase tracking-wider text-[#787363] dark:text-zinc-400 mb-3.5 flex items-center gap-1.5">
+                      <MaterialIcon name="schedule" className="text-sm text-[#8C6B1F] dark:text-[#D4AF37]" />
+                      Daily Meal Schedule
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       {Object.entries(plan.dailySchedule).map(([mealKey, info]: any) => (
-                        <div key={mealKey} className="bg-[#FAF9F5] border border-[#F0EDE4] rounded-2xl px-4 py-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-[10px] font-bold uppercase text-[#8C6B1F]">
-                              {mealKey.replace(/([A-Z])/g, " $1").trim()}
-                            </span>
-                            {info.time && (
-                              <span className="text-[9px] font-bold text-[#787363] bg-white border border-[#E6E1D3] px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <MaterialIcon name="schedule" className="text-xs" />
-                                {info.time}
+                        <div key={mealKey} className="bg-[#FAF9F5] dark:bg-zinc-800/60 border border-[#F0EDE4] dark:border-zinc-700/60 rounded-2xl p-4 flex flex-col justify-between shadow-2xs">
+                          <div>
+                            <div className="flex items-center justify-between mb-2.5">
+                              <span className="text-xs font-bold uppercase tracking-wider text-[#8C6B1F] dark:text-[#E0C368]">
+                                {mealKey.replace(/([A-Z])/g, " $1").trim()}
                               </span>
-                            )}
+                              {info.time && (
+                                <span className="text-[10px] font-bold text-[#787363] dark:text-zinc-300 bg-white dark:bg-zinc-900 border border-[#E6E1D3] dark:border-zinc-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                  <MaterialIcon name="schedule" className="text-xs text-[#8C6B1F] dark:text-[#D4AF37]" />
+                                  {info.time}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs font-medium text-[#1C1B18] dark:text-zinc-100 leading-relaxed capitalize">
+                              {Array.isArray(info.meals) ? info.meals.join(", ") : info.meals}
+                            </p>
                           </div>
-                          <p className="text-xs text-[#1C1B18] leading-relaxed">
-                            {Array.isArray(info.meals) ? info.meals.join(", ") : info.meals}
-                          </p>
                           {info.notes && (
-                            <p className="text-[9px] text-[#787363] mt-1.5 italic border-t border-[#F0EDE4] pt-1.5">{info.notes}</p>
+                            <p className="text-[10px] text-[#787363] dark:text-zinc-400 mt-2.5 italic border-t border-[#F0EDE4] dark:border-zinc-700/60 pt-2">{info.notes}</p>
                           )}
                         </div>
                       ))}
@@ -633,25 +647,25 @@ export default function TasksDietPage() {
 
                 {/* AI Rationale */}
                 {plan.aiRationale && (
-                  <div className="px-5 py-4 border-t border-[#F6F4EF] bg-[#FAF9F5]/50">
+                  <div className="p-6 border-b border-[#F6F4EF] dark:border-zinc-800/80 bg-[#FAF9F5]/60 dark:bg-amber-950/15">
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="w-5 h-5 rounded-md bg-amber-100 border border-amber-200 flex items-center justify-center">
-                        <MaterialIcon name="auto_awesome" className="text-xs text-amber-600" />
+                      <div className="w-5 h-5 rounded-md bg-amber-100 dark:bg-amber-900/60 border border-amber-200 dark:border-amber-700 flex items-center justify-center">
+                        <MaterialIcon name="auto_awesome" className="text-xs text-amber-600 dark:text-amber-300" />
                       </div>
-                      <p className="text-[9px] font-bold uppercase text-[#787363]">AI Clinical Rationale</p>
+                      <p className="text-xs font-bold uppercase tracking-wider text-[#787363] dark:text-zinc-400">AI Clinical Rationale</p>
                     </div>
-                    <p className="text-xs text-[#1C1B18] leading-relaxed">{plan.aiRationale}</p>
+                    <p className="text-xs text-[#1C1B18] dark:text-zinc-200 leading-relaxed">{plan.aiRationale}</p>
                   </div>
                 )}
 
                 {/* Doctor Notes */}
                 {plan.doctorNotes && (
-                  <div className="px-5 py-4 border-t border-[#F6F4EF]">
+                  <div className="p-6">
                     <div className="flex items-center gap-2 mb-2">
-                      <MaterialIcon name="medical_services" className="text-sm text-[#1C5396]" />
-                      <p className="text-[9px] font-bold uppercase text-[#787363]">Doctor Notes</p>
+                      <MaterialIcon name="medical_services" className="text-sm text-[#1C5396] dark:text-blue-400" />
+                      <p className="text-xs font-bold uppercase tracking-wider text-[#787363] dark:text-zinc-400">Doctor Notes</p>
                     </div>
-                    <p className="text-xs text-[#1C1B18] leading-relaxed">{plan.doctorNotes}</p>
+                    <p className="text-xs text-[#1C1B18] dark:text-zinc-200 leading-relaxed">{plan.doctorNotes}</p>
                   </div>
                 )}
               </div>
@@ -664,3 +678,4 @@ export default function TasksDietPage() {
     </div>
   );
 }
+

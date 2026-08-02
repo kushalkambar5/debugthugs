@@ -2061,7 +2061,7 @@ export default function PatientsDashboard() {
                             {plan.dailySchedule && (
                               <div className="px-4 pb-4">
                                 <p className="text-[9px] font-bold text-[#787363] uppercase mb-2">Daily Schedule</p>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                   {Object.entries(plan.dailySchedule).map(([meal, info]: any) => (
                                     <div key={meal} className="bg-[#FAF9F5] border border-[#F0EDE4] rounded-xl px-3 py-2">
                                       <div className="flex items-center justify-between mb-1">
