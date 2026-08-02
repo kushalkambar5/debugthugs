@@ -372,8 +372,8 @@ function PartTimelinePanel({
     });
   };
 
-  // When no specific part is selected, show ALL reports with a hint instead of blocking
-  const isShowingAll = showAll || !selectedPartId;
+  // When no specific part is selected and showAll is false, do not show any reports
+  const isShowingAll = showAll;
 
   if (loading) {
     return (
@@ -389,8 +389,16 @@ function PartTimelinePanel({
 
   const selectedStageObj = DETAILED_STAGES.find((s) => s.id === selectedPartId);
   const selectedPartStage = selectedStageObj?.stage;
-  const matchedScans = isShowingAll ? scans : scans.filter((s) => scanMatchesPart(s, selectedPartId!, selectedPartName));
-  const matchedReports = isShowingAll ? reports : reports.filter((r) => reportMatchesPart(r, selectedPartId!, selectedPartName, selectedPartStage));
+  const matchedScans = isShowingAll
+    ? scans
+    : selectedPartId
+    ? scans.filter((s) => scanMatchesPart(s, selectedPartId, selectedPartName))
+    : [];
+  const matchedReports = isShowingAll
+    ? reports
+    : selectedPartId
+    ? reports.filter((r) => reportMatchesPart(r, selectedPartId, selectedPartName, selectedPartStage))
+    : [];
   const totalCount = matchedScans.length + matchedReports.length;
 
   return (
@@ -405,10 +413,10 @@ function PartTimelinePanel({
         </div>
       )}
       <div className="flex items-center gap-2 sticky top-0 bg-[#FAF9F5] pb-2 z-10">
-        <span className="text-lg">{isShowingAll ? "📋" : selectedPartEmoji}</span>
+        <span className="text-lg">{isShowingAll ? "📋" : (selectedPartEmoji || "🩺")}</span>
         <div>
           <p className="font-serif text-sm font-bold text-[#1C1B18] leading-tight">
-            {isShowingAll ? (allTitle || "All Medical Records") : selectedPartName}
+            {isShowingAll ? (allTitle || "All Medical Reports") : (selectedPartName || "No Organ Selected")}
           </p>
           <p className="text-[9px] text-[#787363] font-sans">{totalCount} related record{totalCount !== 1 ? "s" : ""}</p>
         </div>
@@ -417,7 +425,9 @@ function PartTimelinePanel({
       {totalCount === 0 && (
         <div className="text-center py-6">
           <span className="material-symbols-outlined text-3xl text-[#DCD5C5]">folder_off</span>
-          <p className="text-xs text-[#787363] font-sans mt-1">No records for {selectedPartName}</p>
+          <p className="text-xs text-[#787363] font-sans mt-1">
+            {selectedPartId ? `No records for ${selectedPartName}` : "Select an organ to view reports"}
+          </p>
         </div>
       )}
 
