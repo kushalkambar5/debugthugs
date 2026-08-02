@@ -63,7 +63,7 @@ async function verifyDoctorPatient(req, res, patientId) {
 }
 
 /**
- * Fetch patient context for AI: profile, last 30 metrics, last 5 reports.
+ * Fetch patient context for AI: profile, last 30 metrics, last 5 reports, last 3 diet plans.
  */
 async function buildPatientContext(patientId) {
   const [patient] = await db
@@ -85,18 +85,29 @@ async function buildPatientContext(patientId) {
     .orderBy(desc(medicalReports.uploadedAt))
     .limit(5);
 
-  return { patient, metrics, reports };
+  const previousDietPlans = await db
+    .select()
+    .from(dietPlans)
+    .where(eq(dietPlans.patientId, patientId))
+    .orderBy(desc(dietPlans.createdAt))
+    .limit(3);
+
+  return { patient, metrics, reports, previousDietPlans };
 }
 
 /**
- * Call OpenCode Zen (OpenAI-compatible) to generate a diet plan.
+ * Call OpenCode Zen (OpenAI-compatible) to generate or update a diet plan.
+ * @param {object} patientContext  - { patient, metrics, reports, previousDietPlans }
+ * @param {string} extraInstructions - optional doctor notes
+ * @param {object|null} currentPlan - existing diet plan being updated (for AI context)
  */
-async function generateDietWithAI(patientContext, extraInstructions = '') {
-  const { patient, metrics, reports } = patientContext;
+async function generateDietWithAI(patientContext, extraInstructions = '', currentPlan = null) {
+  const { patient, metrics, reports, previousDietPlans = [] } = patientContext;
 
-  const systemPrompt = `You are an expert clinical nutritionist AI. Given a patient's health profile, 
-recent health metrics (from wearable devices), and medical reports, create a comprehensive, 
-medically-appropriate diet plan. Return ONLY valid JSON in the exact schema specified.`;
+  const systemPrompt = `You are an expert clinical nutritionist AI. Given a patient's full health profile, 
+recent wearable health metrics, medical reports, and any previous diet plans, create a comprehensive 
+clinically-appropriate diet plan. When updating an existing plan, improve upon it based on current data.
+Return ONLY valid JSON in the exact schema specified — no markdown, no explanation.`;
 
   const recentMetricsSummary = metrics
     .slice(0, 7)
@@ -111,6 +122,24 @@ medically-appropriate diet plan. Return ONLY valid JSON in the exact schema spec
   const reportsSummary = reports
     .map((r) => `[${r.reportType}] ${r.title}: ${r.description ?? ''} — AI Summary: ${JSON.stringify(r.aiSummary)}`)
     .join('\n');
+
+  // Previous diet plans summary (for continuity)
+  const prevPlansSummary = previousDietPlans.length
+    ? previousDietPlans
+        .map(
+          (p, i) =>
+            `Plan ${i + 1} (${p.status}, ${p.createdAt?.toString().slice(0, 10)}): ${p.title}\n` +
+            `  Goals: ${JSON.stringify(p.healthGoals)}\n` +
+            `  Nutrition targets: ${JSON.stringify(p.nutritionalTargets)}\n` +
+            `  Doctor notes: ${p.doctorNotes || 'None'}`
+        )
+        .join('\n\n')
+    : 'No previous diet plans.';
+
+  // Current plan being updated (if any)
+  const currentPlanSection = currentPlan
+    ? `## Current Plan Being Updated\nTitle: ${currentPlan.title}\nSchedule: ${JSON.stringify(currentPlan.dailySchedule, null, 2)}\nDoctor Notes: ${currentPlan.doctorNotes || 'None'}\n\nImprove this plan based on the latest data and the doctor's new instructions below.`
+    : '';
 
   const userPrompt = `
 ## Patient Profile
@@ -130,9 +159,14 @@ ${recentMetricsSummary || 'No wearable data available.'}
 ## Recent Medical Reports (Last 5)
 ${reportsSummary || 'No reports available.'}
 
+## Diet Plan History (Last 3 Plans)
+${prevPlansSummary}
+
+${currentPlanSection}
+
 ${extraInstructions ? `## Additional Instructions from Doctor\n${extraInstructions}` : ''}
 
-## Required Output (JSON only, no markdown, no explanation)
+## Required Output (JSON only)
 {
   "title": "string — descriptive plan name",
   "healthGoals": ["goal1", "goal2"],
@@ -151,25 +185,25 @@ ${extraInstructions ? `## Additional Instructions from Doctor\n${extraInstructio
     "eveningSnack": { "time": "HH:MM", "meals": [], "notes": "" },
     "dinner": { "time": "HH:MM", "meals": [], "notes": "" }
   },
-  "aiRationale": "string — clinical reasoning for this plan (2-3 paragraphs)",
+  "aiRationale": "string — clinical reasoning (2-3 paragraphs, referencing previous plan changes if updating)",
   "startDate": "YYYY-MM-DD",
   "endDate": "YYYY-MM-DD"
 }`;
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const response = await fetch('https://opencode.ai/zen/v1/chat/completions', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${process.env.OPENCODE_ZEN_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: process.env.OPENCODE_ZEN_MODEL || 'deepseek/deepseek-chat-v3-0324:free',
+      model: process.env.OPENCODE_ZEN_MODEL || 'deepseek-v4-flash-free',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.4,
-      max_tokens: 2000,
+      max_tokens: 2500,
     }),
   });
 
@@ -194,8 +228,7 @@ ${extraInstructions ? `## Additional Instructions from Doctor\n${extraInstructio
 
 /**
  * POST /api/diet/generate/:patientId
- * AI generates a diet plan for the patient using their health history.
- * Doctor can pass optional `extraInstructions` in the body.
+ * AI generates a FRESH diet plan using patient history + previous plans as context.
  */
 router.post('/generate/:patientId', auth, async (req, res) => {
   const { patientId } = req.params;
@@ -229,6 +262,55 @@ router.post('/generate/:patientId', auth, async (req, res) => {
   } catch (err) {
     console.error('[diet/generate]', err);
     return res.status(500).json({ error: 'Failed to generate diet plan.', detail: err.message });
+  }
+});
+
+/**
+ * PUT /api/diet/update-with-ai/:dietId
+ * AI updates an EXISTING diet plan — sends full medical history + current plan + previous plans to AI.
+ * The existing record is updated in-place (no new record created).
+ */
+router.put('/update-with-ai/:dietId', auth, async (req, res) => {
+  const { dietId } = req.params;
+  const { extraInstructions } = req.body;
+
+  try {
+    const [existing] = await db
+      .select()
+      .from(dietPlans)
+      .where(eq(dietPlans.id, dietId));
+
+    if (!existing) return res.status(404).json({ error: 'Diet plan not found.' });
+
+    const { ok, doctorProfile } = await verifyDoctorPatient(req, res, existing.patientId);
+    if (!ok) return;
+
+    // Build rich context: includes previous diet plans for continuity
+    const context = await buildPatientContext(existing.patientId);
+
+    // Pass the current plan so AI can improve upon it specifically
+    const aiPlan = await generateDietWithAI(context, extraInstructions, existing);
+
+    const [updated] = await db
+      .update(dietPlans)
+      .set({
+        title: aiPlan.title,
+        status: 'DOCTOR_VERIFIED',
+        startDate: aiPlan.startDate || null,
+        endDate: aiPlan.endDate || null,
+        dailySchedule: aiPlan.dailySchedule,
+        nutritionalTargets: aiPlan.nutritionalTargets,
+        healthGoals: aiPlan.healthGoals,
+        aiRationale: aiPlan.aiRationale,
+        updatedAt: new Date(),
+      })
+      .where(eq(dietPlans.id, dietId))
+      .returning();
+
+    return res.json({ dietPlan: updated, message: 'Diet plan updated by AI using full medical history.' });
+  } catch (err) {
+    console.error('[diet/update-with-ai]', err);
+    return res.status(500).json({ error: 'Failed to update diet plan with AI.', detail: err.message });
   }
 });
 

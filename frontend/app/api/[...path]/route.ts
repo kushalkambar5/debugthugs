@@ -27,22 +27,13 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ path:
 async function handleProxy(req: Request, pathSegments: string[]) {
   const session = await getServerSession(authOptions);
   const path = pathSegments.join("/");
-  
-  // Construct target URL
   const parsedUrl = new URL(req.url);
   
-  // Smart routing based on the first path segment:
-  //   /api/models/* → ML FastAPI server (MODELS_URL, port 8000), strip "models/" prefix
-  //   /api/*        → Node.js backend (BACKEND_URL, port 5000), keep "/api/" prefix
-  let backendTargetUrl: string;
-  if (path.startsWith("models/")) {
-    const modelsBaseUrl = process.env.MODELS_URL || "http://localhost:8000";
-    const modelsPath = path.slice("models/".length); // strip "models/" prefix
-    backendTargetUrl = `${modelsBaseUrl}/${modelsPath}${parsedUrl.search}`;
-  } else {
-    const backendUrl = process.env.BACKEND_URL || "http://localhost:5000";
-    backendTargetUrl = `${backendUrl}/api/${path}${parsedUrl.search}`;
-  }
+  const customBackendUrl = req.headers.get("x-custom-backend-url");
+
+  // Route all requests (including models/ and chatbot/) directly through the Express backend API (port 5000)
+  const backendUrl = customBackendUrl || process.env.BACKEND_URL || "https://daringly-openchain-caden.ngrok-free.dev";
+  const backendTargetUrl = `${backendUrl}/api/${path}${parsedUrl.search}`;
 
   // Capture the original content-type BEFORE filtering headers
   const reqContentType = req.headers.get("content-type") || "";
@@ -51,7 +42,7 @@ async function handleProxy(req: Request, pathSegments: string[]) {
   // Copy relevant headers from the client request, excluding headers that will be rebuilt or cause mismatches
   // content-type is excluded here because multipart needs its boundary auto-set by fetch,
   // and for JSON we set it explicitly below
-  const excludedHeaders = ["host", "connection", "content-length", "content-type"];
+  const excludedHeaders = ["host", "connection", "content-length", "content-type", "x-custom-backend-url", "x-custom-models-url"];
   req.headers.forEach((value, key) => {
     if (!excludedHeaders.includes(key.toLowerCase())) {
       headers.set(key, value);

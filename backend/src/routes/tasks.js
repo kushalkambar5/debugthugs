@@ -76,7 +76,150 @@ async function verifyDoctorPatient(req, res, patientId) {
   return { ok: true, doctorProfile };
 }
 
+
 /**
+ * Fetch patient context for AI tasks generation: profile, last 30 metrics, last 5 reports, last 10 tasks.
+ */
+async function buildPatientTaskContext(patientId) {
+  const [patient] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, patientId));
+
+  const metrics = await db
+    .select()
+    .from(healthMetrics)
+    .where(eq(healthMetrics.patientId, patientId))
+    .orderBy(desc(healthMetrics.metricDate))
+    .limit(30);
+
+  const reports = await db
+    .select()
+    .from(medicalReports)
+    .where(eq(medicalReports.patientId, patientId))
+    .orderBy(desc(medicalReports.uploadedAt))
+    .limit(5);
+
+  const existingTasks = await db
+    .select()
+    .from(tasks)
+    .where(eq(tasks.patientId, patientId))
+    .orderBy(desc(tasks.createdAt))
+    .limit(10);
+
+  return { patient, metrics, reports, existingTasks };
+}
+
+/**
+ * Call OpenCode Zen (OpenAI-compatible) to generate or update tasks.
+ */
+async function generateTasksWithAI(patientContext, extraInstructions = '') {
+  const { patient, metrics, reports, existingTasks } = patientContext;
+
+  const systemPrompt = `You are an expert clinical health coach AI. Given a patient's health profile, recent health metrics (from wearable devices), medical reports, and current tasks list, create a set of appropriate daily/weekly tasks or goals to improve their health.
+You can recommend both:
+1. "task_based" (manual checklist items like taking a specific medicine or doing a specific exercise)
+2. "goal_based" (wearable-tracked metrics: daily_steps, calories_burn, min_sleep)
+
+You can choose to preserve, modify, or add new tasks. Keep goals realistic.
+Return ONLY valid JSON in the exact schema specified, with no explanations, no formatting, no markdown.`;
+
+  const recentMetricsSummary = metrics
+    .slice(0, 7)
+    .map(
+      (m) =>
+        `Date: ${m.metricDate} | Steps: ${m.steps ?? 'N/A'} | Calories Burnt: ${m.caloriesBurnt ?? 'N/A'} ` +
+        `| Heart Rate Avg: ${m.heartRateAvg ?? 'N/A'} | Sleep: ${m.sleepDurationMinutes ?? 'N/A'} min ` +
+        `| SpO2: ${m.spo2Percentage ?? 'N/A'}%`
+    )
+    .join('\n');
+
+  const reportsSummary = reports
+    .map((r) => `[${r.reportType}] ${r.title}: ${r.description ?? ''} — AI Summary: ${JSON.stringify(r.aiSummary)}`)
+    .join('\n');
+
+  const tasksSummary = existingTasks.length
+    ? existingTasks
+        .map(
+          (t) =>
+            `- ID: ${t.id} | Type: ${t.taskType} | Name: ${t.taskName || 'N/A'} | Metric: ${t.goalMetric || 'N/A'} | Target: ${t.goalTarget || 'N/A'} | Active: ${t.isActive}`
+        )
+        .join('\n')
+    : 'No current tasks.';
+
+  const userPrompt = `
+## Patient Profile
+- Name: ${patient.fullName}
+- Age: ${patient.dateOfBirth ? Math.floor((Date.now() - new Date(patient.dateOfBirth)) / 3.154e10) : 'Unknown'}
+- Gender: ${patient.gender ?? 'Unknown'}
+- Blood Group: ${patient.bloodGroup ?? 'Unknown'}
+- Height: ${patient.heightCm ?? 'Unknown'} cm
+- Weight: ${patient.weightKg ?? 'Unknown'} kg
+- Allergies: ${patient.allergiesJson ?? 'None'}
+- Chronic Conditions: ${patient.chronicConditionsJson ?? 'None'}
+- Current Medications: ${patient.currentMedicationsJson ?? 'None'}
+
+## Recent Health Metrics (Last 7 Days)
+${recentMetricsSummary || 'No wearable data available.'}
+
+## Recent Medical Reports (Last 5)
+${reportsSummary || 'No reports available.'}
+
+## Current Tasks
+${tasksSummary}
+
+${extraInstructions ? `## Additional Instructions from Doctor\n${extraInstructions}` : ''}
+
+## Required Output (JSON array of tasks only, no markdown code fences, no wrapper)
+[
+  {
+    "taskType": "task_based",
+    "taskName": "Read blood pressure",
+    "taskDescription": "Take daily readings in the morning"
+  },
+  {
+    "taskType": "goal_based",
+    "goalMetric": "daily_steps",
+    "goalTarget": 8000,
+    "freqIntervalDays": 1,
+    "taskDescription": "Maintain active steps target"
+  }
+]`;
+
+  const response = await fetch('https://opencode.ai/zen/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.OPENCODE_ZEN_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: process.env.OPENCODE_ZEN_MODEL || 'deepseek-v4-flash-free',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.4,
+      max_tokens: 2000,
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`OpenCode Zen API error ${response.status}: ${errText}`);
+  }
+
+  const data = await response.json();
+  const rawContent = data.choices?.[0]?.message?.content ?? '';
+
+  // Strip markdown code fences if the model wraps JSON in them
+  const jsonMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, rawContent];
+  const jsonStr = jsonMatch[1].trim();
+
+  return JSON.parse(jsonStr);
+}
+
+/**
+
  * Given a patient's health metrics, compute and upsert task_history rows
  * for all active goal_based tasks of that patient.
  */
@@ -178,9 +321,58 @@ async function syncGoalHistory(patientId) {
   return { syncInterval };
 }
 
+
 // ==========================================
 // DOCTOR ROUTES
 // ==========================================
+
+/**
+ * POST /api/tasks/generate-ai/:patientId
+ * AI generates/updates tasks for the patient based on their medical history, metrics, reports, and current tasks.
+ * Existing active tasks for the patient will be deactivated (soft-deleted), and the new tasks will be inserted.
+ */
+router.post('/generate-ai/:patientId', auth, async (req, res) => {
+  const { patientId } = req.params;
+  const { extraInstructions } = req.body;
+
+  const { ok, doctorProfile } = await verifyDoctorPatient(req, res, patientId);
+  if (!ok) return;
+
+  try {
+    const context = await buildPatientTaskContext(patientId);
+    const aiTasks = await generateTasksWithAI(context, extraInstructions);
+
+    // Deactivate existing active tasks
+    await db
+      .update(tasks)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(and(eq(tasks.patientId, patientId), eq(tasks.isActive, true)));
+
+    // Insert the new ones
+    const insertedTasks = [];
+    for (const t of aiTasks) {
+      const [newTask] = await db
+        .insert(tasks)
+        .values({
+          doctorId: doctorProfile.id,
+          patientId,
+          taskType: t.taskType,
+          taskName: t.taskType === 'task_based' ? t.taskName : null,
+          taskDescription: t.taskDescription || null,
+          goalMetric: t.taskType === 'goal_based' ? t.goalMetric : null,
+          goalTarget: t.taskType === 'goal_based' ? String(t.goalTarget) : null,
+          freqIntervalDays: t.taskType === 'goal_based' ? Number(t.freqIntervalDays) : null,
+        })
+        .returning();
+      insertedTasks.push(newTask);
+    }
+
+    return res.status(201).json({ tasks: insertedTasks, message: 'Tasks updated by AI based on patient history.' });
+  } catch (err) {
+    console.error('[tasks/generate-ai]', err);
+    return res.status(500).json({ error: 'Failed to generate tasks.', detail: err.message });
+  }
+});
 
 /**
  * POST /api/tasks/:patientId

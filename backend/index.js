@@ -13,6 +13,65 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// LibreChat proxy middleware (placed before body parsers to keep request stream intact)
+const LIBRECHAT_URL = process.env.LIBRECHAT_URL || 'http://localhost:3080';
+app.use(async (req, res, next) => {
+  const referer = req.headers.referer || '';
+  const isLibrechatReferer = referer.includes('/librechat') || referer.includes('autoLoginToken');
+  const isLibrechatPath = req.path.startsWith('/librechat');
+
+  if (isLibrechatPath || isLibrechatReferer) {
+    let subPath = req.url;
+    if (isLibrechatPath) {
+      subPath = req.url.replace(/^\/librechat/, '');
+      if (subPath === '') subPath = '/';
+    }
+
+    const targetUrl = `${LIBRECHAT_URL}${subPath}`;
+
+    const headers = {};
+    Object.keys(req.headers).forEach((key) => {
+      if (!['host', 'content-length', 'connection'].includes(key.toLowerCase())) {
+        headers[key] = req.headers[key];
+      }
+    });
+
+    try {
+      const fetchOptions = {
+        method: req.method,
+        headers: headers,
+      };
+
+      if (req.method === 'POST' || req.method === 'PUT') {
+        fetchOptions.body = req;
+        fetchOptions.duplex = 'half';
+      }
+
+      const response = await fetch(targetUrl, fetchOptions);
+
+      res.status(response.status);
+      response.headers.forEach((val, key) => {
+        res.setHeader(key, val);
+      });
+
+      if (response.body) {
+        const reader = response.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(value);
+        }
+      }
+      res.end();
+    } catch (err) {
+      console.error(`[LibreChat Proxy Error to ${targetUrl}]`, err);
+      res.status(502).json({ error: `Bad Gateway: ${err.message}` });
+    }
+  } else {
+    next();
+  }
+});
+
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));

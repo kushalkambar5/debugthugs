@@ -66,7 +66,11 @@ async function streamProxy(targetBaseUrl, req, res) {
     };
 
     if (req.method === 'POST' || req.method === 'PUT') {
-      if (req.body && typeof req.body === 'object') {
+      const contentType = req.headers['content-type'] || '';
+      if (contentType.includes('multipart/form-data')) {
+        fetchOptions.body = req;
+        fetchOptions.duplex = 'half';
+      } else if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
         fetchOptions.body = JSON.stringify(req.body);
         fetchOptions.headers['content-type'] = 'application/json';
       } else {
@@ -381,8 +385,22 @@ router.get('/doctor/patients', authenticateProxyUser, async (req, res) => {
       .leftJoin(doctorPatients, and(eq(users.id, doctorPatients.patientId), eq(doctorPatients.isActive, true)))
       .where(eq(users.role, 'PATIENT'));
 
+    // Deduplicate patients: prioritize assignments for this doctor
+    const uniquePatientsMap = new Map();
+    for (const patient of allPatients) {
+      const existing = uniquePatientsMap.get(patient.id);
+      if (!existing) {
+        uniquePatientsMap.set(patient.id, patient);
+      } else {
+        if (patient.assignedDoctorId === doctor.id) {
+          uniquePatientsMap.set(patient.id, patient);
+        }
+      }
+    }
+    const uniquePatients = Array.from(uniquePatientsMap.values());
+
     const patientDetails = await Promise.all(
-      allPatients.map(async (patient) => {
+      uniquePatients.map(async (patient) => {
         const scans = await db
           .select()
           .from(diseaseScans)

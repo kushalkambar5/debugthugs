@@ -291,7 +291,46 @@ function reportMatchesPart(report: MedicalReport, partId: string, partName: stri
     return true;
   }
   const haystack = `${report.title} ${report.description || ""}`.toLowerCase();
-  return haystack.includes(partId.toLowerCase()) || haystack.includes(partName.toLowerCase());
+  const pid = partId.toLowerCase();
+  
+  // Custom fallbacks for common synonyms/keywords when affectedParts array is not present or doesn't match directly
+  if (pid === "skeleton") {
+    if (haystack.includes("bone") || haystack.includes("skeleton") || haystack.includes("fracture") || haystack.includes("osteoporosis") || haystack.includes("spine")) {
+      return true;
+    }
+  }
+  if (pid === "heart") {
+    if (haystack.includes("heart") || haystack.includes("cardiac") || haystack.includes("ecg") || haystack.includes("cardio")) {
+      return true;
+    }
+  }
+  if (pid === "lungs") {
+    if (haystack.includes("chest") || haystack.includes("lung") || haystack.includes("pulmonary") || haystack.includes("pneumonia") || haystack.includes("respiratory")) {
+      return true;
+    }
+  }
+  if (pid === "brain") {
+    if (haystack.includes("brain") || haystack.includes("cranial") || haystack.includes("headache") || haystack.includes("migraine")) {
+      return true;
+    }
+  }
+  if (pid === "circulatory") {
+    if (haystack.includes("blood") || haystack.includes("vein") || haystack.includes("artery") || haystack.includes("vascular") || haystack.includes("cardiovascular")) {
+      return true;
+    }
+  }
+  if (pid === "muscles") {
+    if (haystack.includes("muscle") || haystack.includes("sprain") || haystack.includes("tendon") || haystack.includes("myo")) {
+      return true;
+    }
+  }
+  if (pid === "skin") {
+    if (haystack.includes("skin") || haystack.includes("dermatology") || haystack.includes("rash") || haystack.includes("cut") || haystack.includes("bruise")) {
+      return true;
+    }
+  }
+
+  return haystack.includes(pid) || haystack.includes(partName.toLowerCase());
 }
 
 function fmtDate(s: string) {
@@ -1009,10 +1048,10 @@ export default function BodyVisualizer() {
 
           let allTitle = "All Medical Reports";
           if (isFullBodyActive) {
-            if (activeId === "skeleton") allTitle = "Bone Structure - All Reports";
-            else if (activeId === "circulatory") allTitle = "Circulatory System - All Reports";
-            else if (activeId === "muscles") allTitle = "Muscular System - All Reports";
-            else if (activeId === "skin") allTitle = "Full Body - All Reports";
+            if (activeId === "skeleton") allTitle = "Bone Structure - Reports";
+            else if (activeId === "circulatory") allTitle = "Circulatory System - Reports";
+            else if (activeId === "muscles") allTitle = "Muscular System - Reports";
+            else if (activeId === "skin") allTitle = "Full Body - Reports";
           }
 
           return (
@@ -1028,7 +1067,7 @@ export default function BodyVisualizer() {
                 scans={medScans}
                 reports={medReports}
                 loading={medLoading}
-                showAll={isFullBodyActive}
+                showAll={false}
                 allTitle={allTitle}
               />
             </div>

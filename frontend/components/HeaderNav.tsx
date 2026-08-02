@@ -8,6 +8,8 @@ import SpecularButton from "@/components/SpecularButton";
 import { useSession, signOut } from "next-auth/react";
 import { ProfileModal } from "@/components/ProfileModal";
 import { usePathname } from "next/navigation";
+import { ConnectionSettingsModal } from "@/components/ConnectionSettingsModal";
+import { useEffect } from "react";
 
 
 export function HeaderNav() {
@@ -16,6 +18,21 @@ export function HeaderNav() {
   const { data: session, status } = useSession();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tunnelsActive, setTunnelsActive] = useState(false);
+
+  useEffect(() => {
+    const checkTunnels = () => {
+      if (typeof window !== "undefined") {
+        const customBackend = localStorage.getItem("custom_backend_url");
+        const customModels = localStorage.getItem("custom_models_url");
+        setTunnelsActive(!!(customBackend || customModels));
+      }
+    };
+    checkTunnels();
+    window.addEventListener("connection-settings-updated", checkTunnels);
+    return () => window.removeEventListener("connection-settings-updated", checkTunnels);
+  }, []);
 
 
   return (
@@ -96,6 +113,23 @@ export function HeaderNav() {
 
         {/* Right CTA Actions */}
         <div className="hidden md:flex items-center gap-3 relative">
+          {/* Connection settings toggle */}
+          <button
+            onClick={() => setSettingsOpen(true)}
+            title={tunnelsActive ? "Custom API Tunnels Active" : "Configure API Connection Tunnels"}
+            className={`w-10 h-10 rounded-full border border-[#DCD5C5] bg-white flex items-center justify-center hover:bg-[#FAF6E8] transition-all cursor-pointer relative ${
+              tunnelsActive ? "text-[#8C6B1F] border-[#8C6B1F]/30" : "text-[#787363]"
+            }`}
+          >
+            <MaterialIcon name="api" className="text-xl" />
+            {tunnelsActive && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+            )}
+          </button>
+
           {status === "authenticated" && session?.user ? (
             <div className="relative">
               <button
@@ -210,6 +244,22 @@ export function HeaderNav() {
 
         {/* Mobile menu button */}
         <div className="flex md:hidden items-center gap-2">
+          <button
+            onClick={() => setSettingsOpen(true)}
+            title="Configure Tunnels"
+            className={`p-2 rounded-lg relative cursor-pointer ${
+              tunnelsActive ? "text-[#8C6B1F]" : "text-[#787363]"
+            }`}
+          >
+            <MaterialIcon name="api" className="text-2xl" />
+            {tunnelsActive && (
+              <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+            )}
+          </button>
+
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2 rounded-lg text-[#1C1B18] hover:bg-[#EBE6D8]"
@@ -371,6 +421,11 @@ export function HeaderNav() {
       <ProfileModal
         isOpen={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}
+      />
+
+      <ConnectionSettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
       />
     </header>
   );

@@ -78,7 +78,11 @@ function ChatContent() {
           const resp = await fetch("/api/doctor/patients");
           if (resp.ok) {
             const data = await resp.json();
-            setPatientsList(data.patients || []);
+            const doctorProfileId = data.doctorProfileId;
+            const myPatients = (data.patients || []).filter(
+              (p: any) => p.assignedDoctorId === doctorProfileId && p.isActive === true
+            );
+            setPatientsList(myPatients);
           }
         } catch (err) {
           console.error("Error loading patients list:", err);
