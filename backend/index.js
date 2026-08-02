@@ -17,10 +17,26 @@ const PORT = process.env.PORT || 5000;
 const LIBRECHAT_URL = process.env.LIBRECHAT_URL || 'http://127.0.0.1:3080';
 app.use(async (req, res, next) => {
   const referer = req.headers.referer || '';
-  const isLibrechatReferer = referer.includes('/librechat') || referer.includes('autoLoginToken');
   const isLibrechatPath = req.path.startsWith('/librechat');
+  
+  let isFromLibrechatIframe = false;
+  if (referer) {
+    try {
+      const refererUrl = new URL(referer);
+      const host = req.headers.host || '';
+      // If the referer host matches the backend's host, the request is coming from inside the iframe.
+      if (refererUrl.host === host) {
+        isFromLibrechatIframe = true;
+      }
+    } catch (e) {
+      // Invalid URL
+    }
+  }
 
-  if (isLibrechatPath || isLibrechatReferer) {
+  // Also fallback to the older query token / referer path matching for safety
+  const isLegacyLibrechatReferer = referer.includes('/librechat') || referer.includes('autoLoginToken');
+
+  if (isLibrechatPath || isFromLibrechatIframe || isLegacyLibrechatReferer) {
     let subPath = req.url;
     if (isLibrechatPath) {
       subPath = req.url.replace(/^\/librechat/, '');

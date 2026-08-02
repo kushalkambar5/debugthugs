@@ -84,7 +84,38 @@ export default function TasksDietPage() {
         fetch("/api/tasks/my"),
         fetch("/api/diet/my"),
       ]);
-      if (tRes.ok) setTasks((await tRes.json()).tasks || []);
+      if (tRes.ok) {
+        const fetchedTasks = (await tRes.json()).tasks || [];
+        setTasks(fetchedTasks);
+
+        // Pre-populate taskHistories with today's entries directly from the fetched tasks data
+        const initialHistories: Record<string, HistoryEntry[]> = {};
+        fetchedTasks.forEach((task: any) => {
+          if (task.isDoneToday !== undefined) {
+            const interval = task.freqIntervalDays || 1;
+            const createdDate = new Date(task.createdAt);
+            const today = new Date();
+            const cursor = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
+            const targetTime = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+
+            let periodDateStr = cursor.toISOString().split("T")[0];
+            while (cursor.getTime() <= targetTime) {
+              periodDateStr = cursor.toISOString().split("T")[0];
+              cursor.setDate(cursor.getDate() + interval);
+            }
+
+            initialHistories[task.id] = [
+              {
+                id: `today-${task.id}`,
+                periodDate: periodDateStr,
+                isDone: task.isDoneToday,
+                actualValue: null,
+              }
+            ];
+          }
+        });
+        setTaskHistories(initialHistories);
+      }
       if (dRes.ok) setDietPlans((await dRes.json()).dietPlans || []);
     } catch (e) {
       console.error(e);
@@ -153,8 +184,23 @@ export default function TasksDietPage() {
   const todayStr = new Date().toISOString().split("T")[0];
 
   const getTodayStatus = (taskId: string) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return undefined;
+
+    const interval = task.freqIntervalDays || 1;
+    const createdDate = new Date(task.createdAt);
+    const today = new Date();
+    const cursor = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
+    const targetTime = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+
+    let periodDateStr = cursor.toISOString().split("T")[0];
+    while (cursor.getTime() <= targetTime) {
+      periodDateStr = cursor.toISOString().split("T")[0];
+      cursor.setDate(cursor.getDate() + interval);
+    }
+
     const history = taskHistories[taskId] || [];
-    return history.find((h) => h.periodDate === todayStr);
+    return history.find((h) => h.periodDate === periodDateStr);
   };
 
   if (status === "loading" || loading) {

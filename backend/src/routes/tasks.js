@@ -78,6 +78,27 @@ async function verifyDoctorPatient(req, res, patientId) {
 
 
 /**
+ * Calculate the period start date for a task based on its creation date,
+ * recurrence interval (in days), and a target date.
+ */
+function getPeriodDateForDate(createdAt, intervalDays, targetDateStr) {
+  const interval = intervalDays || 1;
+  const createdDate = new Date(createdAt);
+  const cursor = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
+  
+  const targetDate = new Date(targetDateStr);
+  const targetTime = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()).getTime();
+
+  let periodDate = new Date(cursor);
+  while (cursor.getTime() <= targetTime) {
+    periodDate = new Date(cursor);
+    cursor.setDate(cursor.getDate() + interval);
+  }
+  return periodDate.toISOString().split('T')[0];
+}
+
+
+/**
  * Fetch patient context for AI tasks generation: profile, last 30 metrics, last 5 reports, last 10 tasks.
  */
 async function buildPatientTaskContext(patientId) {
@@ -361,7 +382,7 @@ router.post('/generate-ai/:patientId', auth, async (req, res) => {
           taskDescription: t.taskDescription || null,
           goalMetric: t.taskType === 'goal_based' ? t.goalMetric : null,
           goalTarget: t.taskType === 'goal_based' ? String(t.goalTarget) : null,
-          freqIntervalDays: t.taskType === 'goal_based' ? Number(t.freqIntervalDays) : null,
+          freqIntervalDays: t.freqIntervalDays ? Number(t.freqIntervalDays) : null,
         })
         .returning();
       insertedTasks.push(newTask);
@@ -423,7 +444,7 @@ router.post('/:patientId', auth, async (req, res) => {
         taskDescription: taskDescription || null,
         goalMetric: taskType === 'goal_based' ? goalMetric : null,
         goalTarget: taskType === 'goal_based' ? String(goalTarget) : null,
-        freqIntervalDays: taskType === 'goal_based' ? Number(freqIntervalDays) : null,
+        freqIntervalDays: freqIntervalDays ? Number(freqIntervalDays) : null,
       })
       .returning();
 
@@ -450,7 +471,29 @@ router.get('/patient/:patientId', auth, async (req, res) => {
       .where(eq(tasks.patientId, patientId))
       .orderBy(desc(tasks.createdAt));
 
-    return res.json({ tasks: result });
+    const today = new Date().toISOString().split('T')[0];
+    const tasksWithStatus = [];
+    for (const task of result) {
+      const interval = task.freqIntervalDays || 1;
+      const periodDate = getPeriodDateForDate(task.createdAt, interval, today);
+
+      const [historyEntry] = await db
+        .select()
+        .from(taskHistory)
+        .where(
+          and(
+            eq(taskHistory.taskId, task.id),
+            eq(taskHistory.periodDate, periodDate)
+          )
+        );
+
+      tasksWithStatus.push({
+        ...task,
+        isDoneToday: historyEntry ? historyEntry.isDone : false
+      });
+    }
+
+    return res.json({ tasks: tasksWithStatus });
   } catch (err) {
     console.error('[tasks GET patient]', err);
     return res.status(500).json({ error: 'Failed to fetch tasks.' });
@@ -554,7 +597,29 @@ router.get('/my', auth, async (req, res) => {
       .where(and(eq(tasks.patientId, req.user.id), eq(tasks.isActive, true)))
       .orderBy(desc(tasks.createdAt));
 
-    return res.json({ tasks: result });
+    const today = new Date().toISOString().split('T')[0];
+    const tasksWithStatus = [];
+    for (const task of result) {
+      const interval = task.freqIntervalDays || 1;
+      const periodDate = getPeriodDateForDate(task.createdAt, interval, today);
+
+      const [historyEntry] = await db
+        .select()
+        .from(taskHistory)
+        .where(
+          and(
+            eq(taskHistory.taskId, task.id),
+            eq(taskHistory.periodDate, periodDate)
+          )
+        );
+
+      tasksWithStatus.push({
+        ...task,
+        isDoneToday: historyEntry ? historyEntry.isDone : false
+      });
+    }
+
+    return res.json({ tasks: tasksWithStatus });
   } catch (err) {
     console.error('[tasks GET my]', err);
     return res.status(500).json({ error: 'Failed to fetch tasks.' });
@@ -581,11 +646,12 @@ router.post('/:taskId/done', auth, async (req, res) => {
     }
 
     const today = new Date().toISOString().split('T')[0];
+    const periodDate = getPeriodDateForDate(task.createdAt, task.freqIntervalDays || 1, today);
 
     const [existing] = await db
       .select()
       .from(taskHistory)
-      .where(and(eq(taskHistory.taskId, task.id), eq(taskHistory.periodDate, today)));
+      .where(and(eq(taskHistory.taskId, task.id), eq(taskHistory.periodDate, periodDate)));
 
     let result;
     if (existing) {
@@ -628,10 +694,11 @@ router.post('/:taskId/undone', auth, async (req, res) => {
     }
 
     const today = new Date().toISOString().split('T')[0];
+    const periodDate = getPeriodDateForDate(task.createdAt, task.freqIntervalDays || 1, today);
     const [existing] = await db
       .select()
       .from(taskHistory)
-      .where(and(eq(taskHistory.taskId, task.id), eq(taskHistory.periodDate, today)));
+      .where(and(eq(taskHistory.taskId, task.id), eq(taskHistory.periodDate, periodDate)));
 
     if (existing) {
       const [result] = await db
