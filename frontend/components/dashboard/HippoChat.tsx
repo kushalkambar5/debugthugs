@@ -19,8 +19,8 @@ export default function HippoChat({ fullHeight = false }: HippoChatProps) {
   const [showConfig, setShowConfig] = useState(false);
   const [reloadTrigger, setReloadTrigger] = useState(0);
 
-  useEffect(() => {
-    // 1. Determine base LibreChat URL from localStorage or environment variable
+  // Helper to determine the default LibreChat URL based on environment and host context
+  const getDefaultLibrechatUrl = () => {
     let baseUrl = "";
     if (typeof window !== "undefined") {
       baseUrl = localStorage.getItem("hippo_chatbot_url") || "";
@@ -28,12 +28,30 @@ export default function HippoChat({ fullHeight = false }: HippoChatProps) {
         const customBackend = localStorage.getItem("custom_backend_url");
         if (customBackend) {
           baseUrl = `${customBackend}/librechat`;
+        } else {
+          // If we are accessing from a remote host (like Vercel) and no custom backend is set,
+          // default to the main backend's tunnel URL rather than client's localhost.
+          const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+          if (!isLocalhost) {
+            let defaultBackend = process.env.NEXT_PUBLIC_API_URL 
+              ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, "") 
+              : "";
+            
+            // If the environment variable is empty or points to localhost, it's invalid on a remote host.
+            // Fall back to the public tunnel url.
+            if (!defaultBackend || defaultBackend.includes("localhost") || defaultBackend.includes("127.0.0.1")) {
+              defaultBackend = "https://daringly-openchain-caden.ngrok-free.dev";
+            }
+            baseUrl = `${defaultBackend}/librechat`;
+          }
         }
       }
     }
-    if (!baseUrl) {
-      baseUrl = process.env.NEXT_PUBLIC_LIBRECHAT_URL || "http://localhost:3080";
-    }
+    return baseUrl || process.env.NEXT_PUBLIC_LIBRECHAT_URL || "http://localhost:3080";
+  };
+
+  useEffect(() => {
+    const baseUrl = getDefaultLibrechatUrl();
     setLibrechatUrl(baseUrl);
     setInputUrl(baseUrl);
 
@@ -77,7 +95,7 @@ export default function HippoChat({ fullHeight = false }: HippoChatProps) {
 
   const handleResetUrl = () => {
     localStorage.removeItem("hippo_chatbot_url");
-    const defaultUrl = process.env.NEXT_PUBLIC_LIBRECHAT_URL || "http://localhost:3080";
+    const defaultUrl = getDefaultLibrechatUrl();
     setLibrechatUrl(defaultUrl);
     setInputUrl(defaultUrl);
     setShowConfig(false);
